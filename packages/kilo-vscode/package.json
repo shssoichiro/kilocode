@@ -705,6 +705,7 @@
     "check-types:webview": "bun script/typecheck.ts --project webview-ui/tsconfig.json",
     "typecheck": "bun run check-types:extension && bun run check-types:webview",
     "check-types:extension": "bun script/typecheck.ts",
+    "i18n:missing": "bun script/list-missing-translations.ts",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "knip": "knip",

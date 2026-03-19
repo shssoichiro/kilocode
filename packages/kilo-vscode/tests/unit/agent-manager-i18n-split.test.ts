@@ -1,82 +1,10 @@
 import { describe, it, expect } from "bun:test"
-import { dict as appEn } from "../../webview-ui/src/i18n/en"
-import { dict as appZh } from "../../webview-ui/src/i18n/zh"
-import { dict as appZht } from "../../webview-ui/src/i18n/zht"
-import { dict as appKo } from "../../webview-ui/src/i18n/ko"
-import { dict as appDe } from "../../webview-ui/src/i18n/de"
-import { dict as appEs } from "../../webview-ui/src/i18n/es"
-import { dict as appFr } from "../../webview-ui/src/i18n/fr"
-import { dict as appDa } from "../../webview-ui/src/i18n/da"
-import { dict as appJa } from "../../webview-ui/src/i18n/ja"
-import { dict as appPl } from "../../webview-ui/src/i18n/pl"
-import { dict as appRu } from "../../webview-ui/src/i18n/ru"
-import { dict as appAr } from "../../webview-ui/src/i18n/ar"
-import { dict as appNo } from "../../webview-ui/src/i18n/no"
-import { dict as appBr } from "../../webview-ui/src/i18n/br"
-import { dict as appTh } from "../../webview-ui/src/i18n/th"
-import { dict as appBs } from "../../webview-ui/src/i18n/bs"
-import { dict as amEn } from "../../webview-ui/agent-manager/i18n/en"
-import { dict as amZh } from "../../webview-ui/agent-manager/i18n/zh"
-import { dict as amZht } from "../../webview-ui/agent-manager/i18n/zht"
-import { dict as amKo } from "../../webview-ui/agent-manager/i18n/ko"
-import { dict as amDe } from "../../webview-ui/agent-manager/i18n/de"
-import { dict as amEs } from "../../webview-ui/agent-manager/i18n/es"
-import { dict as amFr } from "../../webview-ui/agent-manager/i18n/fr"
-import { dict as amDa } from "../../webview-ui/agent-manager/i18n/da"
-import { dict as amJa } from "../../webview-ui/agent-manager/i18n/ja"
-import { dict as amPl } from "../../webview-ui/agent-manager/i18n/pl"
-import { dict as amRu } from "../../webview-ui/agent-manager/i18n/ru"
-import { dict as amAr } from "../../webview-ui/agent-manager/i18n/ar"
-import { dict as amNo } from "../../webview-ui/agent-manager/i18n/no"
-import { dict as amBr } from "../../webview-ui/agent-manager/i18n/br"
-import { dict as amTh } from "../../webview-ui/agent-manager/i18n/th"
-import { dict as amBs } from "../../webview-ui/agent-manager/i18n/bs"
+import { amLocales, appLocales, placeholders } from "./i18n-shared"
 
 const PREFIX = "agentManager."
 
-const locales = {
-  en: amEn,
-  zh: amZh,
-  zht: amZht,
-  ko: amKo,
-  de: amDe,
-  es: amEs,
-  fr: amFr,
-  da: amDa,
-  ja: amJa,
-  pl: amPl,
-  ru: amRu,
-  ar: amAr,
-  no: amNo,
-  br: amBr,
-  th: amTh,
-  bs: amBs,
-}
-
-const appLocales = {
-  en: appEn,
-  zh: appZh,
-  zht: appZht,
-  ko: appKo,
-  de: appDe,
-  es: appEs,
-  fr: appFr,
-  da: appDa,
-  ja: appJa,
-  pl: appPl,
-  ru: appRu,
-  ar: appAr,
-  no: appNo,
-  br: appBr,
-  th: appTh,
-  bs: appBs,
-}
-
-function placeholders(text: string): string[] {
-  return Array.from(text.matchAll(/\{\{\s*([\w.]+)\s*\}\}/g))
-    .flatMap((match) => (match[1] ? [match[1]] : []))
-    .sort()
-}
+const locales = amLocales
+const amEn = amLocales.en
 
 describe("Agent Manager i18n split", () => {
   it("keeps agent manager keys out of general locale dictionaries", () => {

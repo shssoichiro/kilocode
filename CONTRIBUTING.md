@@ -110,3 +110,9 @@ To keep our backlog manageable, we automatically close inactive issues and PRs a
 - **Variables:** Prefer `const`.
 - **Naming:** Concise single-word identifiers when descriptive.
 - **Runtime APIs:** Use Bun helpers (e.g., `Bun.file()`).
+
+### Translations
+
+Kilo CLI has full translation support for several languages via i18n files in each package. Developers can utilize the `add-translations` skill to have Kilo automatically generate missing translation strings for keys that have been recently added to an `en.json` file.
+
+Using Kilo in the root of this project, in Orchestrator mode, ask Kilo to "Run the add-translations skill". This will run a script to find any missing translation keys, then the agent will generate translations for the new keys.
