@@ -634,10 +634,10 @@ export function Session() {
       },
     },
     {
-      title: showThinking() ? "Hide thinking" : "Show thinking",
+      title: showThinking() ? "Hide thinking blocks" : "Show thinking blocks",
       value: "session.toggle.thinking",
       keybind: "display_thinking",
-      category: "Session",
+      category: "System",
       slash: {
         name: "thinking",
         aliases: ["toggle-thinking"],
