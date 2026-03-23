@@ -2127,7 +2127,7 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
 
     // Org switch succeeded — refresh profile and providers independently (best-effort)
     try {
-      const profileResult = await sdkClient.kilo.profile()
+      const profileResult = await this.client!.kilo.profile()
       // Broadcast to all webviews (sidebar, profile tab, agent manager, etc.)
       this.connectionService.notifyProfileChanged(profileResult.data ?? null)
     } catch (error) {
