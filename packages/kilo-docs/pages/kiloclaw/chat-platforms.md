@@ -94,6 +94,58 @@ To connect Slack, you need **both** of the following tokens from [Slack App Mana
 
 Both tokens are required — you cannot save with only one.
 
+#### Step 1: Create a Slack App from the OpenClaw Manifest
+
+1. Go to [Slack App Management](https://api.slack.com/apps) and click **Create New App** → **From a Manifest**
+2. Copy the manifest from the [OpenClaw docs](https://docs.openclaw.ai/channels/slack#manifest-and-scope-checklist)
+3. Paste the manifest JSON into Slack's manifest editor
+4. Customize the manifest before creating:
+   - Rename the app to your preferred name wherever it appears
+   - Update the slash command if desired (e.g., `/kiloclaw`)
+5. Click **Create**
+
+#### Step 2: Generate Tokens
+
+You need two tokens from Slack:
+
+**App-Level Token**
+
+1. In your Slack app settings, scroll down to **App-Level Tokens**
+2. Click **Generate Token**
+3. Add the `connections:write` scope
+4. Generate and copy the token (starts with `xapp-`)
+
+**Bot User OAuth Token**
+
+1. In the left sidebar, click **Install App**
+2. Install the app to your workspace
+3. Copy the **Bot User OAuth Token** (starts with `xoxb-`)
+
+#### Step 3: Connect Slack to KiloClaw
+
+1. In the KiloClaw UI, find the Slack integration section (may show "not configured")
+2. Enter both tokens:
+   - The `xapp-` app-level token
+   - The `xoxb-` bot user OAuth token
+3. Click **Save**
+4. Scroll to the top of the KiloClaw UI and click **Redeploy**. Wait for the instance to come back up
+
+#### Step 4: Pair Slack with KiloClaw
+
+1. In Slack, DM the app and type your slash command (e.g., `/claw`) followed by anything — this triggers the pairing flow
+
+> 📝 **Note**
+> The slash command is whatever you defined in the manifest. Any text after the command will work to trigger pairing.
+
+2. The app will return a pairing code
+3. In the KiloClaw UI, go to **Gateway Processes** → **Settings**
+4. Find the pending pairing request and click **Approve** (verify the code matches)
+
+#### Step 5: Verify the Connection
+
+1. Go back to Slack and send a direct message to the app (plain text, no slash command)
+2. The app should respond — you're live!
+
 ## Configuring a Channel
 
 1. Open your [KiloClaw dashboard](/docs/kiloclaw/dashboard)
