@@ -830,8 +830,6 @@
   font-family: var(--vscode-font-family);
   font-size: 13px;
   line-height: 1.4;
-  white-space: pre-wrap;
-  overflow-wrap: break-word;
   resize: none;
   outline: none;
   scrollbar-gutter: stable;
@@ -877,7 +875,7 @@
   font-size: 13px;
   line-height: 1.4;
   white-space: pre-wrap;
-  overflow-wrap: break-word;
+  word-wrap: break-word;
   overflow-x: hidden;
   overflow-y: auto;
   scrollbar-gutter: stable;
@@ -891,6 +889,7 @@
 
 .prompt-input-ghost-text {
   color: var(--vscode-editorGhostText-foreground, rgba(255, 255, 255, 0.35));
+  display: inline-flex;
 }
 
 .prompt-input-hint {
