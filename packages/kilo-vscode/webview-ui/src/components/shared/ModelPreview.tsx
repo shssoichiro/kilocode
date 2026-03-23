@@ -9,7 +9,7 @@ interface Props {
 
 function fmtPrice(n: number): string {
   if (n === 0) return "Free"
-  if (n < 0.01) return `$${(n * 1000).toFixed(3)}/1B`
+  if (n < 0.01) return `$${(n * 1_000_000).toFixed(2)}/1M`
   return `$${n.toFixed(2)}/1M`
 }
 
