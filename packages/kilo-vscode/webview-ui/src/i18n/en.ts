@@ -1079,6 +1079,10 @@ export const dict = {
   "settings.agentBehaviour.mcpDetail.disabled": "This server is disabled.",
   "settings.agentBehaviour.mcpEmpty": "No MCP servers configured. Edit the opencode config file to add MCP servers.",
   "settings.agentBehaviour.workflowsPlaceholder": "Workflows are managed via workflow files in your workspace.",
+  "settings.agentBehaviour.workflows.description":
+    "Workflows are custom slash commands defined in your config. Type /command-name in the chat to invoke them. Commands are configured in opencode.json under the 'command' section.",
+  "settings.agentBehaviour.workflows.empty":
+    "No custom commands configured. Add commands to your opencode.json to see them here.",
   "settings.agentBehaviour.notImplemented": "Not yet implemented.",
   "settings.agentBehaviour.createMode": "Create New Mode",
   "settings.agentBehaviour.createMode.name": "Name",
