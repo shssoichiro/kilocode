@@ -1,3 +1,9 @@
+// Set env before any imports that transitively load flag.ts (e.g. LLM, SessionRetry).
+// This MUST happen before static imports, but ES module imports are hoisted.
+// So we set it here and use mock.module + dynamic imports for modules that
+// transitively load flag.ts to ensure the env is captured at load time.
+process.env.KILO_SESSION_RETRY_LIMIT = "2"
+
 import { afterEach, describe, expect, mock, spyOn, test } from "bun:test"
 
 mock.module("@/kilo-sessions/remote-sender", () => ({
@@ -11,17 +17,11 @@ mock.module("@/kilo-sessions/remote-sender", () => ({
   },
 }))
 
+// Modules that do NOT transitively import flag.ts can be statically imported.
 import { APICallError } from "ai"
-import { Bus } from "../../src/bus"
-import { Flag } from "../../src/flag/flag"
-import { Identifier } from "../../src/id/id"
-import { Instance } from "../../src/project/instance"
 import type { Provider } from "../../src/provider/provider"
-import { LLM } from "../../src/session/llm"
 import type { LLM as LLMType } from "../../src/session/llm"
-import { MessageV2 } from "../../src/session/message-v2"
-import { SessionRetry } from "../../src/session/retry"
-import { SessionStatus } from "../../src/session/status"
+import type { MessageV2 } from "../../src/session/message-v2"
 import { Log } from "../../src/util/log"
 import { tmpdir } from "../fixture/fixture"
 
@@ -67,64 +67,22 @@ function sentinel() {
   return new Error("unexpected extra llm call")
 }
 
-async function seed(model: Provider.Model) {
-  const { Session } = await import("../../src/session")
-  const session = await Session.create({})
-  const user = (await Session.updateMessage({
-    id: Identifier.ascending("message"),
-    role: "user",
-    sessionID: session.id,
-    time: { created: Date.now() },
-    agent: "code",
-    model: { providerID: model.providerID, modelID: model.id },
-    tools: {},
-  })) as MessageV2.User
-  const assistant = (await Session.updateMessage({
-    id: Identifier.ascending("message"),
-    parentID: user.id,
-    role: "assistant",
-    mode: "code",
-    agent: "code",
-    path: {
-      cwd: Instance.directory,
-      root: Instance.worktree,
-    },
-    cost: 0,
-    tokens: {
-      input: 0,
-      output: 0,
-      reasoning: 0,
-      cache: { read: 0, write: 0 },
-    },
-    modelID: model.id,
-    providerID: model.providerID,
-    time: { created: Date.now() },
-    sessionID: session.id,
-  })) as MessageV2.Assistant
-  return { assistant, session, user }
-}
-
-function input(model: Provider.Model, sessionID: string, user: MessageV2.User): LLMType.StreamInput {
-  return {
-    user,
-    sessionID,
-    model,
-    agent: { name: "code", mode: "primary", permission: [], options: {} } as any,
-    system: [],
-    abort: AbortSignal.any([]),
-    messages: [],
-    tools: {},
-  }
-}
-
 afterEach(() => {
   delete process.env.KILO_SESSION_RETRY_LIMIT
 })
 
 describe("session processor retry limit", () => {
   test("stops after two retries with the normalized retryable error", async () => {
+    // Dynamic imports so that flag.ts sees KILO_SESSION_RETRY_LIMIT="2" set above
+    const { Bus } = await import("../../src/bus")
+    const { Identifier } = await import("../../src/id/id")
+    const { Instance } = await import("../../src/project/instance")
+    const { LLM } = await import("../../src/session/llm")
+    const { MessageV2 } = await import("../../src/session/message-v2")
+    const { SessionRetry } = await import("../../src/session/retry")
+    const { SessionStatus } = await import("../../src/session/status")
+
     await using tmp = await tmpdir({ git: true })
-    process.env.KILO_SESSION_RETRY_LIMIT = "2"
 
     await Instance.provide({
       directory: tmp.path,
@@ -132,16 +90,48 @@ describe("session processor retry limit", () => {
         const { Session } = await import("../../src/session")
         const { SessionProcessor } = await import("../../src/session/processor")
         const model = createModel()
-        const seeded = await seed(model)
+        const session = await Session.create({})
+        const user = (await Session.updateMessage({
+          id: Identifier.ascending("message"),
+          role: "user",
+          sessionID: session.id,
+          time: { created: Date.now() },
+          agent: "code",
+          model: { providerID: model.providerID, modelID: model.id },
+          tools: {},
+        })) as MessageV2.User
+        const assistant = (await Session.updateMessage({
+          id: Identifier.ascending("message"),
+          parentID: user.id,
+          role: "assistant",
+          mode: "code",
+          agent: "code",
+          path: {
+            cwd: Instance.directory,
+            root: Instance.worktree,
+          },
+          cost: 0,
+          tokens: {
+            input: 0,
+            output: 0,
+            reasoning: 0,
+            cache: { read: 0, write: 0 },
+          },
+          modelID: model.id,
+          providerID: model.providerID,
+          time: { created: Date.now() },
+          sessionID: session.id,
+        })) as MessageV2.Assistant
+
         const retry: number[] = []
         const errors: Array<MessageV2.Assistant["error"]> = []
         const unsubStatus = Bus.subscribe(SessionStatus.Event.Status, (event) => {
-          if (event.properties.sessionID !== seeded.session.id) return
+          if (event.properties.sessionID !== session.id) return
           if (event.properties.status.type !== "retry") return
           retry.push(event.properties.status.attempt)
         })
         const unsubError = Bus.subscribe(Session.Event.Error, (event) => {
-          if (event.properties.sessionID !== seeded.session.id) return
+          if (event.properties.sessionID !== session.id) return
           errors.push(event.properties.error)
         })
         const llm = spyOn(LLM, "stream")
@@ -151,14 +141,25 @@ describe("session processor retry limit", () => {
           .mockRejectedValue(sentinel())
         const sleep = spyOn(SessionRetry, "sleep").mockResolvedValue(undefined)
         const processor = SessionProcessor.create({
-          assistantMessage: seeded.assistant,
-          sessionID: seeded.session.id,
+          assistantMessage: assistant,
+          sessionID: session.id,
           model,
           abort: AbortSignal.any([]),
         })
 
+        const inp: LLMType.StreamInput = {
+          user,
+          sessionID: session.id,
+          model,
+          agent: { name: "code", mode: "primary", permission: [], options: {} } as any,
+          system: [],
+          abort: AbortSignal.any([]),
+          messages: [],
+          tools: {},
+        }
+
         try {
-          const result = await processor.process(input(model, seeded.session.id, seeded.user))
+          const result = await processor.process(inp)
           const expected = MessageV2.fromError(retryable429(), { providerID: "openai" })
 
           expect(result).toBe("stop")
@@ -177,20 +178,31 @@ describe("session processor retry limit", () => {
     })
   })
 
-  test("only positive integers enable the limit", () => {
+  test("only positive integers enable the limit", async () => {
+    const key = () => JSON.stringify({ time: Date.now(), rand: Math.random() })
+
     delete process.env.KILO_SESSION_RETRY_LIMIT
-    expect(Flag.KILO_SESSION_RETRY_LIMIT).toBeUndefined()
+    expect((await import("../../src/flag/flag?" + key())).Flag.KILO_SESSION_RETRY_LIMIT).toBeUndefined()
 
     process.env.KILO_SESSION_RETRY_LIMIT = "0"
-    expect(Flag.KILO_SESSION_RETRY_LIMIT).toBeUndefined()
+    expect((await import("../../src/flag/flag?" + key())).Flag.KILO_SESSION_RETRY_LIMIT).toBeUndefined()
 
     process.env.KILO_SESSION_RETRY_LIMIT = "-1"
-    expect(Flag.KILO_SESSION_RETRY_LIMIT).toBeUndefined()
+    expect((await import("../../src/flag/flag?" + key())).Flag.KILO_SESSION_RETRY_LIMIT).toBeUndefined()
 
     process.env.KILO_SESSION_RETRY_LIMIT = "abc"
-    expect(Flag.KILO_SESSION_RETRY_LIMIT).toBeUndefined()
+    expect((await import("../../src/flag/flag?" + key())).Flag.KILO_SESSION_RETRY_LIMIT).toBeUndefined()
 
     process.env.KILO_SESSION_RETRY_LIMIT = "2"
-    expect(Flag.KILO_SESSION_RETRY_LIMIT).toBe(2)
+    expect((await import("../../src/flag/flag?" + key())).Flag.KILO_SESSION_RETRY_LIMIT).toBe(2)
+  })
+
+  test("does not change after import", async () => {
+    delete process.env.KILO_SESSION_RETRY_LIMIT
+    const id = JSON.stringify({ time: Date.now(), rand: Math.random() })
+    const { Flag: loaded } = await import("../../src/flag/flag?" + id)
+    expect(loaded.KILO_SESSION_RETRY_LIMIT).toBeUndefined()
+    process.env.KILO_SESSION_RETRY_LIMIT = "5"
+    expect(loaded.KILO_SESSION_RETRY_LIMIT).toBeUndefined()
   })
 })

@@ -35,6 +35,7 @@ export namespace Flag {
   export const KILO_SERVER_PASSWORD = process.env["KILO_SERVER_PASSWORD"]
   export const KILO_SERVER_USERNAME = process.env["KILO_SERVER_USERNAME"]
   export const KILO_ENABLE_QUESTION_TOOL = truthy("KILO_ENABLE_QUESTION_TOOL")
+
   // Experimental
   export const KILO_EXPERIMENTAL = truthy("KILO_EXPERIMENTAL")
   export const KILO_EXPERIMENTAL_FILEWATCHER = truthy("KILO_EXPERIMENTAL_FILEWATCHER")
@@ -57,7 +58,6 @@ export namespace Flag {
   export const KILO_MODELS_URL = process.env["KILO_MODELS_URL"]
   export const KILO_MODELS_PATH = process.env["KILO_MODELS_PATH"]
   export const KILO_SKIP_MIGRATIONS = truthy("KILO_SKIP_MIGRATIONS")
-  export declare const KILO_SESSION_RETRY_LIMIT: number | undefined
 
   function number(key: string) {
     const value = process.env[key]
@@ -65,6 +65,8 @@ export namespace Flag {
     const parsed = Number(value)
     return Number.isInteger(parsed) && parsed > 0 ? parsed : undefined
   }
+
+  export const KILO_SESSION_RETRY_LIMIT = number("KILO_SESSION_RETRY_LIMIT")
 }
 
 // Dynamic getter for KILO_DISABLE_PROJECT_CONFIG
@@ -106,20 +108,6 @@ Object.defineProperty(Flag, "KILO_CONFIG_DIR", {
 Object.defineProperty(Flag, "KILO_CLIENT", {
   get() {
     return process.env["KILO_CLIENT"] ?? "cli"
-  },
-  enumerable: true,
-  configurable: false,
-})
-
-// Dynamic getter for KILO_SESSION_RETRY_LIMIT
-// This must be evaluated at access time, not module load time,
-// because tests and runtime tooling may set this env var later
-Object.defineProperty(Flag, "KILO_SESSION_RETRY_LIMIT", {
-  get() {
-    const value = process.env["KILO_SESSION_RETRY_LIMIT"]
-    if (!value) return undefined
-    const parsed = Number(value)
-    return Number.isInteger(parsed) && parsed > 0 ? parsed : undefined
   },
   enumerable: true,
   configurable: false,
