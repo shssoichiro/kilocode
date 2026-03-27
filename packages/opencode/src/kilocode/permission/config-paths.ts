@@ -25,7 +25,7 @@ export namespace ConfigProtection {
   export const DISABLE_ALWAYS_KEY = "disableAlways" as const
 
   function normalize(p: string): string {
-    return p.replaceAll("\\", "/")
+    return path.posix.normalize(p.replaceAll("\\", "/"))
   }
 
   /** Return the remainder after the config dir prefix, or undefined if excluded. */
