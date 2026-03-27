@@ -15,7 +15,7 @@ export const BUILTIN_SKILLS: BuiltinSkill[] = [
   {
     name: "kilo-config",
     description:
-      "Guide for configuring Kilo CLI: commands, agents, MCP servers, skills, permissions, instructions, plugins, providers, and all kilo.json fields. Use when the user asks about configuring or customizing Kilo.",
+      "Guide for configuring Kilo CLI: commands, agents, MCP servers, skills, permissions, instructions, plugins, providers, all kilo.json fields, and TUI settings (themes, appearance, keybinds, ctrl+p commands). Use when the user asks about configuring, customizing, or changing settings in Kilo.",
     content: KILO_CONFIG,
   },
 ]
