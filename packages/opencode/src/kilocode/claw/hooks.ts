@@ -132,11 +132,15 @@ export function createClawChat(sdk: any) {
       setConnected(true)
       setLoading(false)
 
-      onCleanup(async () => {
+      onCleanup(() => {
         unsub()
         unsubUpdated()
         unsubPresence()
-        if (chat) await chat.disconnect()
+        if (chat) {
+          chat.disconnect().catch((err) => {
+            log.error("disconnect failed", { error: err?.message ?? String(err) })
+          })
+        }
         chat = null
       })
     } catch (err: any) {

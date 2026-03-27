@@ -94,6 +94,13 @@ export async function connect(creds: ChatCredentials): Promise<ClawChatClient> {
   log.info("getInstance", { key: creds.apiKey?.substring(0, 8) + "..." })
   const client = StreamChat.getInstance(creds.apiKey)
 
+  // getInstance returns a singleton — ensure any stale connection is
+  // cleaned up before (re-)connecting so navigate-away-and-back works.
+  if (client.userID) {
+    log.info("disconnecting stale user", { user: client.userID })
+    await client.disconnectUser()
+  }
+
   log.info("connectUser", { user: creds.userId })
   await client.connectUser({ id: creds.userId }, creds.userToken)
 
