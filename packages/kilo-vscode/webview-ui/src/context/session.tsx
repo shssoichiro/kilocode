@@ -1450,18 +1450,24 @@ export const SessionProvider: ParentComponent = (props) => {
 
   function replyToQuestion(requestID: string, answers: string[][]) {
     clearQuestionError(requestID)
+    const question = questions().find((item) => item.id === requestID)
+    const sessionID = question?.sessionID ?? currentSessionID() ?? ""
     vscode.postMessage({
       type: "questionReply",
       requestID,
+      sessionID,
       answers,
     })
   }
 
   function rejectQuestion(requestID: string) {
     clearQuestionError(requestID)
+    const question = questions().find((item) => item.id === requestID)
+    const sessionID = question?.sessionID ?? currentSessionID() ?? ""
     vscode.postMessage({
       type: "questionReject",
       requestID,
+      sessionID,
     })
   }
 
