@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test"
+import { describe, expect, spyOn, test } from "bun:test"
 import fs from "fs/promises"
 import path from "path"
 import { Identifier } from "../../src/id/id"
@@ -8,6 +8,8 @@ import { Question } from "../../src/question"
 import { Session } from "../../src/session"
 import { MessageV2 } from "../../src/session/message-v2"
 import { SessionPrompt } from "../../src/session/prompt"
+import { SessionSummary } from "../../src/session/summary"
+import type { LLM as LLMType } from "../../src/session/llm"
 import { Log } from "../../src/util/log"
 import { tmpdir } from "../fixture/fixture"
 
@@ -114,6 +116,68 @@ async function waitQuestion(sessionID: string) {
 }
 
 describe("plan_exit detection", () => {
+  test("plan mode reminder includes plan path and creates plans dir", () =>
+    withInstance(async () => {
+      const { LLM } = await import("../../src/session/llm")
+      const session = await Session.create({ title: "plan mode prompt" })
+      const plan = Session.plan(session)
+      const dir = path.dirname(plan)
+      await fs.rm(dir, { recursive: true, force: true })
+
+      const seen = { text: "" }
+      const summary = spyOn(SessionSummary, "summarize").mockResolvedValue(undefined)
+      const llm = spyOn(LLM, "stream").mockImplementation(async (input: LLMType.StreamInput) => {
+        const msg = input.messages.findLast((item) => item.role === "user")
+        const text = msg
+          ? typeof msg.content === "string"
+            ? msg.content
+            : msg.content
+                .map((part) => {
+                  if (part.type === "text") return part.text
+                  return ""
+                })
+                .join("\n")
+          : ""
+        seen.text = text
+
+        const exists = await fs
+          .stat(dir)
+          .then((item) => item.isDirectory())
+          .catch(() => false)
+        expect(exists).toBe(true)
+
+        return {
+          fullStream: (async function* () {
+            yield { type: "start" }
+            yield { type: "start-step" }
+            yield {
+              type: "finish-step",
+              finishReason: "stop",
+              usage: { inputTokens: 1, completionTokens: 1, totalTokens: 2 },
+              providerMetadata: undefined,
+            }
+            yield { type: "finish" }
+          })(),
+        } as any
+      })
+
+      try {
+        await SessionPrompt.prompt({
+          sessionID: session.id,
+          agent: "plan",
+          parts: [{ type: "text", text: "create a plan" }],
+        })
+      } finally {
+        llm.mockRestore()
+        summary.mockRestore()
+      }
+
+      expect(seen.text).toContain(plan)
+      expect(
+        seen.text.includes("exception of the plan file") || seen.text.includes("only file you are allowed to edit"),
+      ).toBe(true)
+    }))
+
   test("PlanFollowup.ask triggers when plan_exit tool is present", () =>
     withInstance(async () => {
       const seeded = await seed({

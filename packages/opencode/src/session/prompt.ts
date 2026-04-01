@@ -1419,6 +1419,11 @@ export namespace SessionPrompt {
     // Original logic when experimental plan mode is disabled
     if (!Flag.KILO_EXPERIMENTAL_PLAN_MODE) {
       if (input.agent.name === "plan") {
+        // kilocode_change start - ensure non-experimental plan mode still allows writing the plan file
+        const plan = Session.plan(input.session)
+        const exists = await Filesystem.exists(plan)
+        if (!exists) await fs.mkdir(path.dirname(plan), { recursive: true })
+
         userMessage.parts.push({
           id: Identifier.ascending("part"),
           messageID: userMessage.info.id,
@@ -1427,6 +1432,20 @@ export namespace SessionPrompt {
           text: PROMPT_PLAN,
           synthetic: true,
         })
+
+        userMessage.parts.push({
+          id: Identifier.ascending("part"),
+          messageID: userMessage.info.id,
+          sessionID: userMessage.info.sessionID,
+          type: "text",
+          text: `<system-reminder>
+## Plan File Info:
+${exists ? `A plan file already exists at ${plan}. You can read it and make incremental edits using the edit tool.` : `No plan file exists yet. You should create your plan at ${plan} using the write tool.`}
+You should build your plan incrementally by writing to or editing this file. NOTE that this is the only file you are allowed to edit - other than this you are only allowed to take READ-ONLY actions.
+</system-reminder>`,
+          synthetic: true,
+        })
+        // kilocode_change end
       }
       const wasPlan = input.messages.some((msg) => msg.info.role === "assistant" && msg.info.agent === "plan")
       // kilocode_change start - renamed from "build" to "code"
