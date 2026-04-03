@@ -177,6 +177,46 @@ The dashboard shows recent KiloClaw platform updates. Each entry is tagged as a 
 | **Redeploy**           | Stops, applies config, and restarts the machine (same version or upgraded). | Yes             |
 | **Destroy Instance**   | Permanently deletes everything.                                             | No              |
 
+## Migrating Your Workspace
+
+When switching from one KiloClaw instance to another — or to a different OpenClaw provider — you can migrate your Claw's workspace (including memory and other files) by transferring the workspace directory. Integrations you've configured (Google, GitHub, etc.) will need to be set up again manually on the new instance.
+
+The recommended approach is to have your Claw save its workspace externally, then restore it on the new instance. There are two options:
+
+### Backing Up Your Workspace
+
+#### Option 1: Back up to GitHub
+
+Ask your Claw to push the workspace to a GitHub repository:
+
+> Create a new GitHub repo and push your entire workspace there with the `gh` CLI. Tell me the URL of the repo you used.
+
+#### Option 2: Back up to Google Drive
+
+Ask your Claw to compress and upload the workspace to Google Drive:
+
+> Tar compress your workspace and push the file to Google Drive with the `gog` CLI. Then share the filename you used.
+
+### Restoring Your Workspace
+
+Once you have a backup, start your new KiloClaw instance and ask the Claw to restore the workspace.
+
+#### Option 1: Restore from GitHub
+
+> The GitHub repo `<repo>` has a backup of your workspace in it. Please pull the workspace from the repo with the `gh` CLI and overwrite the existing workspace directory with the repo's contents.
+
+#### Option 2: Restore from Google Drive
+
+> The Google Drive file `<filename>` has a backup of your workspace in it. Please pull the tar file from Google Drive with the `gog` CLI and overwrite the existing workspace directory with its contents.
+
+{% callout type="note" %}
+Replace `<repo>` or `<filename>` with the actual repository URL or filename from the backup step.
+{% /callout %}
+
+{% callout type="warning" %}
+Workspace migration transfers files only. You will need to reconfigure any integrations (Google Workspace, GitHub, chat platform tokens, etc.) on the new instance. See [Development Tools](/docs/kiloclaw/development-tools) and [Chat Platforms](/docs/kiloclaw/chat-platforms) for setup instructions.
+{% /callout %}
+
 ## Machine Specs
 
 Each instance runs on a dedicated machine — there is no shared infrastructure between users.
