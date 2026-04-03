@@ -65,4 +65,6 @@ dependencies {
     }
 
     implementation(project(":shared"))
+    implementation(libs.okhttp)
+    implementation(libs.okhttp.sse)
 }

@@ -42,8 +42,8 @@ class KiloManager(private val cs: CoroutineScope) : Disposable {
     private val mutex = Mutex()
     private var pending: Deferred<KiloConnection>? = null
     private var process: Process? = null
-    private var port: Int? = null
-    private var password: String? = null
+
+    fun process(): Process? = process
 
     suspend fun init(): KiloConnection {
         mutex.withLock {
@@ -136,10 +136,9 @@ class KiloManager(private val cs: CoroutineScope) : Disposable {
                 LOG.info("CLI stdout: $line")
                 val match = PORT_REGEX.find(line)
                 if (match != null) {
-                    port = match.groupValues[1].toInt()
-                    password = pwd
-                    LOG.info("CLI server ready on port $port")
-                    return@withContext KiloConnection.Ready
+                    val p = match.groupValues[1].toInt()
+                    LOG.info("CLI server ready on port $p")
+                    return@withContext KiloConnection.Ready(port = p, password = pwd)
                 }
 
                 if (!proc.isAlive) break
@@ -159,8 +158,6 @@ class KiloManager(private val cs: CoroutineScope) : Disposable {
         val proc = process ?: return
         process = null
         pending = null
-        port = null
-        password = null
 
         LOG.info("Disposing — killing CLI process (pid ${proc.pid()})")
         proc.destroy()
