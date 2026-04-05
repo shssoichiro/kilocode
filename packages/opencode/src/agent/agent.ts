@@ -234,6 +234,18 @@ export namespace Agent {
             external_directory: {
               [path.join(Global.Path.data, "plans", "*")]: "allow",
             },
+            apply_patch: {
+              "*": "deny",
+              [path.join(".kilo", "plans", "*.md")]: "allow", // kilocode_change
+              [path.join(".opencode", "plans", "*.md")]: "allow", // kilocode_change: .opencode fallback
+              [path.relative(Instance.worktree, path.join(Global.Path.data, path.join("plans", "*.md")))]: "allow",
+            },
+            write: {
+              "*": "deny",
+              [path.join(".kilo", "plans", "*.md")]: "allow", // kilocode_change
+              [path.join(".opencode", "plans", "*.md")]: "allow", // kilocode_change: .opencode fallback
+              [path.relative(Instance.worktree, path.join(Global.Path.data, path.join("plans", "*.md")))]: "allow",
+            },
             edit: {
               "*": "deny",
               [path.join(".kilo", "plans", "*.md")]: "allow", // kilocode_change
