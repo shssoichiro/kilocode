@@ -75,7 +75,14 @@ export const TaskTool = Tool.define("task", async (ctx) => {
         caller?.permission ?? [],
         callerSession.permission ?? [],
       )
-      const inherited = callerRules.filter((r) => r.permission === "edit" || r.permission === "bash")
+      // Build the set of MCP permission identifiers (e.g. "servername_*") so we can
+      // include them in the inherited ruleset — same sanitisation logic as agent.ts.
+      const mcpPermissions = new Set(
+        Object.keys(config.mcp ?? {}).map((k) => k.replace(/[^a-zA-Z0-9_-]/g, "_") + "_*"),
+      )
+      const inherited = callerRules.filter(
+        (r) => r.permission === "edit" || r.permission === "bash" || mcpPermissions.has(r.permission),
+      )
       // kilocode_change end
 
       const session = await iife(async () => {
