@@ -106,6 +106,7 @@
   "overrides": {
     "@types/bun": "catalog:",
     "@types/node": "catalog:",
+    "framer-motion": "12.34.5",
     "path-to-regexp": ">=8.4.0",
     "picomatch": ">=2.3.2",
     "defu": "6.1.6",
