@@ -21,7 +21,7 @@ Auto Model is a smart model routing system that automatically selects the optima
 
 That's it. No configuration needed. 
 
-You can see which underlying models are used, as well as the cost, in the expanded model picker. Mapping information is also available on the [Gateway Model page](/docs/gateway/models-and-providers#kilo-autofrontier).
+You can see which underlying models are used, as well as the cost, in the expanded model picker. Model mapping information is also available on the [Gateway Model page](/docs/gateway/models-and-providers#kilo-autofrontier).
 
 ## Tiers
 
