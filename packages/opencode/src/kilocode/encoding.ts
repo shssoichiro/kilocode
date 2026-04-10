@@ -100,6 +100,18 @@ export namespace Encoding {
 
     // Fallback: check UTF-8 validity, then latin1
     if (isUtf8(bytes)) return DEFAULT
+
+    // For non-UTF-8 bytes, accept lower-confidence CJK detections.
+    // jschardet often reports low confidence for Shift_JIS even on valid
+    // files, and reaching this point means the bytes are definitely not
+    // valid UTF-8 — so a CJK detection is far more likely than latin1.
+    if (result.encoding && result.confidence > 0.2) {
+      const enc = normalize(result.encoding)
+      if (iconv.encodingExists(enc)) {
+        return { encoding: enc, bom: false }
+      }
+    }
+
     return { encoding: "iso-8859-1", bom: false }
   }
 
