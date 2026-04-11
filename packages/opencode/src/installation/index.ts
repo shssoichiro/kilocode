@@ -61,9 +61,9 @@ export namespace Installation {
     })
   export type Info = z.infer<typeof Info>
 
-  export const VERSION = typeof KILO_VERSION === "string" ? KILO_VERSION : "local"
-  export const CHANNEL = typeof KILO_CHANNEL === "string" ? KILO_CHANNEL : "local"
-  export const USER_AGENT = `kilo/${CHANNEL}/${VERSION}/${Flag.KILO_CLIENT}`
+  export const VERSION = typeof KILO_VERSION === "string" ? KILO_VERSION : "local" // kilocode_change
+  export const CHANNEL = typeof KILO_CHANNEL === "string" ? KILO_CHANNEL : "local" // kilocode_change
+  export const USER_AGENT = `kilo/${CHANNEL}/${VERSION}/${Flag.KILO_CLIENT}` // kilocode_change
 
   export function isPreview() {
     return CHANNEL !== "latest"
@@ -142,16 +142,18 @@ export namespace Installation {
         )
 
         const getBrewFormula = Effect.fnUntraced(function* () {
+          // kilocode_change start
           const tapFormula = yield* text(["brew", "list", "--formula", "Kilo-Org/tap/kilo"])
           if (tapFormula.includes("kilo")) return "Kilo-Org/tap/kilo"
           const coreFormula = yield* text(["brew", "list", "--formula", "kilo"])
           if (coreFormula.includes("kilo")) return "kilo"
           return "kilo"
+          // kilocode_change end
         })
 
         const upgradeCurl = Effect.fnUntraced(
           function* (target: string) {
-            const response = yield* httpOk.execute(HttpClientRequest.get("https://kilo.ai/install"))
+            const response = yield* httpOk.execute(HttpClientRequest.get("https://kilo.ai/install")) // kilocode_change
             const body = yield* response.text
             const bodyBytes = new TextEncoder().encode(body)
             const proc = ChildProcess.make("bash", [], {
@@ -181,9 +183,11 @@ export namespace Installation {
             { name: "yarn", command: () => text(["yarn", "global", "list"]) },
             { name: "pnpm", command: () => text(["pnpm", "list", "-g", "--depth=0"]) },
             { name: "bun", command: () => text(["bun", "pm", "ls", "-g"]) },
+            // kilocode_change start
             { name: "brew", command: () => text(["brew", "list", "--formula", "kilo"]) },
             { name: "scoop", command: () => text(["scoop", "list", "kilo"]) },
             { name: "choco", command: () => text(["choco", "list", "--limit-output", "kilo"]) },
+            // kilocode_change end
           ]
 
           checks.sort((a, b) => {
@@ -197,7 +201,7 @@ export namespace Installation {
           for (const check of checks) {
             const output = yield* check.command()
             const installedName =
-              check.name === "brew" || check.name === "choco" || check.name === "scoop" ? "kilo" : "@kilocode/cli"
+              check.name === "brew" || check.name === "choco" || check.name === "scoop" ? "kilo" : "@kilocode/cli" // kilocode_change
             if (output.includes(installedName)) {
               return check.name
             }
@@ -217,7 +221,7 @@ export namespace Installation {
               return info.formulae[0].versions.stable
             }
             const response = yield* httpOk.execute(
-              HttpClientRequest.get("https://formulae.brew.sh/api/formula/kilo.json").pipe(
+              HttpClientRequest.get("https://formulae.brew.sh/api/formula/kilo.json").pipe( // kilocode_change
                 HttpClientRequest.acceptJson,
               ),
             )
@@ -231,7 +235,7 @@ export namespace Installation {
             const registry = reg.endsWith("/") ? reg.slice(0, -1) : reg
             const channel = CHANNEL
             const response = yield* httpOk.execute(
-              HttpClientRequest.get(`${registry}/@kilocode/cli/${channel}`).pipe(HttpClientRequest.acceptJson),
+              HttpClientRequest.get(`${registry}/@kilocode/cli/${channel}`).pipe(HttpClientRequest.acceptJson), // kilocode_change
             )
             const data = yield* HttpClientResponse.schemaBodyJson(NpmPackage)(response)
             return data.version
@@ -240,7 +244,7 @@ export namespace Installation {
           if (detectedMethod === "choco") {
             const response = yield* httpOk.execute(
               HttpClientRequest.get(
-                "https://community.chocolatey.org/api/v2/Packages?$filter=Id%20eq%20%27kilo%27%20and%20IsLatestVersion&$select=Version",
+                "https://community.chocolatey.org/api/v2/Packages?$filter=Id%20eq%20%27kilo%27%20and%20IsLatestVersion&$select=Version", // kilocode_change
               ).pipe(HttpClientRequest.setHeaders({ Accept: "application/json;odata=verbose" })),
             )
             const data = yield* HttpClientResponse.schemaBodyJson(ChocoPackage)(response)
@@ -250,7 +254,7 @@ export namespace Installation {
           if (detectedMethod === "scoop") {
             const response = yield* httpOk.execute(
               HttpClientRequest.get(
-                "https://raw.githubusercontent.com/ScoopInstaller/Main/master/bucket/kilo.json",
+                "https://raw.githubusercontent.com/ScoopInstaller/Main/master/bucket/kilo.json", // kilocode_change
               ).pipe(HttpClientRequest.setHeaders({ Accept: "application/json" })),
             )
             const data = yield* HttpClientResponse.schemaBodyJson(ScoopManifest)(response)
@@ -258,7 +262,7 @@ export namespace Installation {
           }
 
           const response = yield* httpOk.execute(
-            HttpClientRequest.get("https://api.github.com/repos/Kilo-Org/kilocode/releases/latest").pipe(
+            HttpClientRequest.get("https://api.github.com/repos/Kilo-Org/kilocode/releases/latest").pipe( // kilocode_change
               HttpClientRequest.acceptJson,
             ),
           )
@@ -273,24 +277,24 @@ export namespace Installation {
               result = yield* upgradeCurl(target)
               break
             case "npm":
-              result = yield* run(["npm", "install", "-g", `@kilocode/cli@${target}`])
+              result = yield* run(["npm", "install", "-g", `@kilocode/cli@${target}`]) // kilocode_change
               break
             case "pnpm":
-              result = yield* run(["pnpm", "install", "-g", `@kilocode/cli@${target}`])
+              result = yield* run(["pnpm", "install", "-g", `@kilocode/cli@${target}`]) // kilocode_change
               break
             case "bun":
-              result = yield* run(["bun", "install", "-g", `@kilocode/cli@${target}`])
+              result = yield* run(["bun", "install", "-g", `@kilocode/cli@${target}`]) // kilocode_change
               break
             case "brew": {
               const formula = yield* getBrewFormula()
               const env = { HOMEBREW_NO_AUTO_UPDATE: "1" }
               if (formula.includes("/")) {
-                const tap = yield* run(["brew", "tap", "Kilo-Org/tap"], { env })
+                const tap = yield* run(["brew", "tap", "Kilo-Org/tap"], { env }) // kilocode_change
                 if (tap.code !== 0) {
                   result = tap
                   break
                 }
-                const repo = yield* text(["brew", "--repo", "Kilo-Org/tap"])
+                const repo = yield* text(["brew", "--repo", "Kilo-Org/tap"]) // kilocode_change
                 const dir = repo.trim()
                 if (dir) {
                   const pull = yield* run(["git", "pull", "--ff-only"], { cwd: dir, env })
@@ -304,10 +308,10 @@ export namespace Installation {
               break
             }
             case "choco":
-              result = yield* run(["choco", "upgrade", "kilo", `--version=${target}`, "-y"])
+              result = yield* run(["choco", "upgrade", "kilo", `--version=${target}`, "-y"]) // kilocode_change
               break
             case "scoop":
-              result = yield* run(["scoop", "install", `kilo@${target}`])
+              result = yield* run(["scoop", "install", `kilo@${target}`]) // kilocode_change
               break
             default:
               return yield* new UpgradeFailedError({ stderr: `Unknown method: ${m}` })
