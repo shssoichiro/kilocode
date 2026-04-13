@@ -1,6 +1,6 @@
 package ai.kilocode.rpc
 
-import ai.kilocode.rpc.dto.KiloProjectStateDto
+import ai.kilocode.rpc.dto.KiloWorkspaceStateDto
 import com.intellij.platform.rpc.RemoteApiProviderService
 import fleet.rpc.RemoteApi
 import fleet.rpc.Rpc
@@ -8,11 +8,11 @@ import fleet.rpc.remoteApiDescriptor
 import kotlinx.coroutines.flow.Flow
 
 /**
- * Project-level RPC API exposed from backend to frontend.
+ * Workspace-level RPC API exposed from backend to frontend.
  *
- * Operations are scoped to a specific project directory.
- * The CLI backend is app-scoped, but each call routes to the
- * correct [KiloBackendProjectService] by directory lookup.
+ * Operations are scoped to a specific directory (workspace root
+ * or worktree). Each call routes to a [KiloBackendWorkspace]
+ * via the workspace manager.
  */
 @Rpc
 interface KiloProjectRpcApi : RemoteApi<Unit> {
@@ -22,9 +22,9 @@ interface KiloProjectRpcApi : RemoteApi<Unit> {
         }
     }
 
-    /** Observe project state loading progress. */
-    suspend fun state(directory: String): Flow<KiloProjectStateDto>
+    /** Observe workspace state loading progress. */
+    suspend fun state(directory: String): Flow<KiloWorkspaceStateDto>
 
-    /** Trigger a full reload of project data. */
+    /** Trigger a full reload of workspace data. */
     suspend fun reload(directory: String)
 }

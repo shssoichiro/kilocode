@@ -4,6 +4,7 @@ package ai.kilocode.backend.rpc
 
 import ai.kilocode.backend.app.KiloBackendAppService
 import ai.kilocode.backend.app.KiloBackendSessionManager
+import ai.kilocode.backend.workspace.KiloBackendWorkspaceManager
 import ai.kilocode.rpc.KiloSessionRpcApi
 import ai.kilocode.rpc.dto.SessionDto
 import ai.kilocode.rpc.dto.SessionListDto
@@ -14,33 +15,37 @@ import kotlinx.coroutines.flow.Flow
 /**
  * Backend implementation of [KiloSessionRpcApi].
  *
- * Delegates to [KiloBackendSessionManager] obtained from
- * [KiloBackendAppService.sessions]. The manager is guaranteed
- * to be started when the app is in [KiloAppState.Ready].
+ * Session CRUD routes through the [KiloBackendWorkspaceManager] to
+ * get the correct workspace for a directory. Status tracking and
+ * worktree directory management go directly to the
+ * [KiloBackendSessionManager].
  */
 class KiloSessionRpcApiImpl : KiloSessionRpcApi {
 
-    private val manager: KiloBackendSessionManager
+    private val workspaces: KiloBackendWorkspaceManager
+        get() = service<KiloBackendAppService>().workspaces
+
+    private val sessions: KiloBackendSessionManager
         get() = service<KiloBackendAppService>().sessions
 
     override suspend fun list(directory: String): SessionListDto =
-        manager.list(directory)
+        workspaces.get(directory).sessions()
 
     override suspend fun create(directory: String): SessionDto =
-        manager.create(directory)
+        workspaces.get(directory).createSession()
 
     override suspend fun get(id: String, directory: String): SessionDto =
-        manager.get(id, directory)
+        sessions.get(id, directory)
 
     override suspend fun delete(id: String, directory: String) =
-        manager.delete(id, directory)
+        workspaces.get(directory).deleteSession(id)
 
     override suspend fun statuses(): Flow<Map<String, SessionStatusDto>> =
-        manager.statuses
+        sessions.statuses
 
     override suspend fun setDirectory(id: String, directory: String) =
-        manager.setDirectory(id, directory)
+        sessions.setDirectory(id, directory)
 
     override suspend fun getDirectory(id: String, fallback: String): String =
-        manager.getDirectory(id, fallback)
+        sessions.getDirectory(id, fallback)
 }

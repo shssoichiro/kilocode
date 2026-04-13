@@ -1,30 +1,30 @@
-package ai.kilocode.backend.project
+package ai.kilocode.backend.workspace
 
 /**
- * Full project data lifecycle state, combining connection readiness
- * with project-scoped data loading progress.
+ * Workspace data lifecycle state, combining connection readiness
+ * with directory-scoped data loading progress.
  *
  * Only populated after [KiloAppState.Ready][ai.kilocode.backend.app.KiloAppState.Ready]
  * — the CLI server must be connected and global data loaded before
- * project data can be fetched.
+ * workspace data can be fetched.
  */
-sealed class KiloProjectState {
-    data object Pending : KiloProjectState()
-    data class Loading(val progress: KiloProjectLoadProgress) : KiloProjectState()
+sealed class KiloWorkspaceState {
+    data object Pending : KiloWorkspaceState()
+    data class Loading(val progress: KiloWorkspaceLoadProgress) : KiloWorkspaceState()
     data class Ready(
         val providers: ProviderData,
         val agents: AgentData,
         val commands: List<CommandInfo>,
         val skills: List<SkillInfo>,
-    ) : KiloProjectState()
-    data class Error(val message: String) : KiloProjectState()
+    ) : KiloWorkspaceState()
+    data class Error(val message: String) : KiloWorkspaceState()
 }
 
 /**
- * Tracks which project data fetches have completed during
- * the [KiloProjectState.Loading] phase.
+ * Tracks which workspace data fetches have completed during
+ * the [KiloWorkspaceState.Loading] phase.
  */
-data class KiloProjectLoadProgress(
+data class KiloWorkspaceLoadProgress(
     val providers: Boolean = false,
     val agents: Boolean = false,
     val commands: Boolean = false,

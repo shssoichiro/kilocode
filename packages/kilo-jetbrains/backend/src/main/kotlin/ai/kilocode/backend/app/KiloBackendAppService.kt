@@ -2,6 +2,7 @@ package ai.kilocode.backend.app
 
 import ai.kilocode.backend.util.IntellijLog
 import ai.kilocode.backend.util.KiloLog
+import ai.kilocode.backend.workspace.KiloBackendWorkspaceManager
 import ai.kilocode.jetbrains.api.client.DefaultApi
 import ai.kilocode.jetbrains.api.infrastructure.ClientError
 import ai.kilocode.jetbrains.api.infrastructure.ClientException
@@ -87,6 +88,7 @@ class KiloBackendAppService private constructor(
     val api: DefaultApi? get() = connection.api
 
     val sessions = KiloBackendSessionManager(cs, log)
+    val workspaces = KiloBackendWorkspaceManager(cs, sessions, log)
 
     @Volatile var profile: KiloProfile200Response? = null
         private set
@@ -227,6 +229,7 @@ class KiloBackendAppService private constructor(
                 )
                 log.info("Application started — config, profile, notifications loaded")
                 sessions.start(connection.api!!, connection.events)
+                workspaces.start(connection.api!!, connection.events)
                 startWatchingGlobalSseEvents()
             } catch (e: CancellationException) {
                 throw e
@@ -376,6 +379,7 @@ class KiloBackendAppService private constructor(
     }
 
     private fun clear() {
+        workspaces.stop()
         sessions.stop()
         loader?.cancel()
         eventWatcher?.cancel()

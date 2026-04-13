@@ -2,88 +2,77 @@
 
 package ai.kilocode.backend.rpc
 
-import ai.kilocode.backend.project.AgentData
-import ai.kilocode.backend.project.AgentInfo
-import ai.kilocode.backend.project.CommandInfo
-import ai.kilocode.backend.project.KiloBackendProjectService
-import ai.kilocode.backend.project.KiloProjectLoadProgress
-import ai.kilocode.backend.project.KiloProjectState
-import ai.kilocode.backend.project.ModelInfo
-import ai.kilocode.backend.project.ProviderData
-import ai.kilocode.backend.project.ProviderInfo
-import ai.kilocode.backend.project.SkillInfo
+import ai.kilocode.backend.app.KiloBackendAppService
+import ai.kilocode.backend.workspace.AgentData
+import ai.kilocode.backend.workspace.AgentInfo
+import ai.kilocode.backend.workspace.CommandInfo
+import ai.kilocode.backend.workspace.KiloBackendWorkspaceManager
+import ai.kilocode.backend.workspace.KiloWorkspaceLoadProgress
+import ai.kilocode.backend.workspace.KiloWorkspaceState
+import ai.kilocode.backend.workspace.ModelInfo
+import ai.kilocode.backend.workspace.ProviderData
+import ai.kilocode.backend.workspace.ProviderInfo
+import ai.kilocode.backend.workspace.SkillInfo
 import ai.kilocode.rpc.KiloProjectRpcApi
 import ai.kilocode.rpc.dto.AgentDto
 import ai.kilocode.rpc.dto.AgentsDto
 import ai.kilocode.rpc.dto.CommandDto
-import ai.kilocode.rpc.dto.KiloProjectLoadProgressDto
-import ai.kilocode.rpc.dto.KiloProjectStateDto
-import ai.kilocode.rpc.dto.KiloProjectStatusDto
+import ai.kilocode.rpc.dto.KiloWorkspaceLoadProgressDto
+import ai.kilocode.rpc.dto.KiloWorkspaceStateDto
+import ai.kilocode.rpc.dto.KiloWorkspaceStatusDto
 import ai.kilocode.rpc.dto.ModelDto
 import ai.kilocode.rpc.dto.ProviderDto
 import ai.kilocode.rpc.dto.ProvidersDto
 import ai.kilocode.rpc.dto.SkillDto
 import com.intellij.openapi.components.service
-import com.intellij.openapi.project.ProjectManager
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 
 /**
  * Backend implementation of [KiloProjectRpcApi].
  *
- * Looks up the correct [KiloBackendProjectService] by directory
- * and maps its internal domain model to shared DTOs.
+ * Routes through the [KiloBackendWorkspaceManager] to get a workspace
+ * for the given directory. No [ProjectManager] dependency — any
+ * directory (including worktrees) can get a workspace.
  */
 class KiloProjectRpcApiImpl : KiloProjectRpcApi {
 
-    override suspend fun state(directory: String): Flow<KiloProjectStateDto> {
-        val svc = find(directory)
-            ?: return flowOf(KiloProjectStateDto(
-                status = KiloProjectStatusDto.ERROR,
-                error = "Project not found for directory: $directory",
-            ))
-        svc.start()
-        return svc.state
+    private val manager: KiloBackendWorkspaceManager
+        get() = service<KiloBackendAppService>().workspaces
+
+    override suspend fun state(directory: String): Flow<KiloWorkspaceStateDto> =
+        manager.get(directory).state
             .map(::dto)
             .distinctUntilChanged()
-    }
 
     override suspend fun reload(directory: String) {
-        find(directory)?.reload()
-    }
-
-    private fun find(directory: String): KiloBackendProjectService? {
-        val project = ProjectManager.getInstance().openProjects
-            .find { it.basePath == directory }
-            ?: return null
-        return project.service<KiloBackendProjectService>()
+        manager.get(directory).reload()
     }
 
     // ------ mapping: domain model → DTO ------
 
-    private fun dto(state: KiloProjectState): KiloProjectStateDto =
+    private fun dto(state: KiloWorkspaceState): KiloWorkspaceStateDto =
         when (state) {
-            KiloProjectState.Pending -> KiloProjectStateDto(KiloProjectStatusDto.PENDING)
-            is KiloProjectState.Loading -> KiloProjectStateDto(
-                status = KiloProjectStatusDto.LOADING,
+            KiloWorkspaceState.Pending -> KiloWorkspaceStateDto(KiloWorkspaceStatusDto.PENDING)
+            is KiloWorkspaceState.Loading -> KiloWorkspaceStateDto(
+                status = KiloWorkspaceStatusDto.LOADING,
                 progress = progress(state.progress),
             )
-            is KiloProjectState.Ready -> KiloProjectStateDto(
-                status = KiloProjectStatusDto.READY,
+            is KiloWorkspaceState.Ready -> KiloWorkspaceStateDto(
+                status = KiloWorkspaceStatusDto.READY,
                 providers = providers(state.providers),
                 agents = agents(state.agents),
                 commands = state.commands.map(::command),
                 skills = state.skills.map(::skill),
             )
-            is KiloProjectState.Error -> KiloProjectStateDto(
-                status = KiloProjectStatusDto.ERROR,
+            is KiloWorkspaceState.Error -> KiloWorkspaceStateDto(
+                status = KiloWorkspaceStatusDto.ERROR,
                 error = state.message,
             )
         }
 
-    private fun progress(p: KiloProjectLoadProgress) = KiloProjectLoadProgressDto(
+    private fun progress(p: KiloWorkspaceLoadProgress) = KiloWorkspaceLoadProgressDto(
         providers = p.providers,
         agents = p.agents,
         commands = p.commands,

@@ -3,8 +3,8 @@
 package ai.kilocode.client
 
 import ai.kilocode.rpc.KiloProjectRpcApi
-import ai.kilocode.rpc.dto.KiloProjectStateDto
-import ai.kilocode.rpc.dto.KiloProjectStatusDto
+import ai.kilocode.rpc.dto.KiloWorkspaceStateDto
+import ai.kilocode.rpc.dto.KiloWorkspaceStatusDto
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.project.Project
@@ -31,12 +31,12 @@ class KiloProjectService(
 ) {
     companion object {
         private val LOG = Logger.getInstance(KiloProjectService::class.java)
-        private val init = KiloProjectStateDto(KiloProjectStatusDto.PENDING)
+        private val init = KiloWorkspaceStateDto(KiloWorkspaceStatusDto.PENDING)
     }
 
     private val directory: String get() = project.basePath ?: ""
 
-    val state: StateFlow<KiloProjectStateDto> = flow {
+    val state: StateFlow<KiloWorkspaceStateDto> = flow {
         durable {
             KiloProjectRpcApi.getInstance()
                 .state(directory)

@@ -1,15 +1,12 @@
-package ai.kilocode.backend.project
+package ai.kilocode.backend.workspace
 
-import ai.kilocode.backend.app.KiloAppState
-import ai.kilocode.backend.app.KiloBackendAppService
+import ai.kilocode.backend.app.KiloBackendSessionManager
 import ai.kilocode.backend.app.SseEvent
-import ai.kilocode.backend.util.IntellijLog
 import ai.kilocode.backend.util.KiloLog
 import ai.kilocode.jetbrains.api.client.DefaultApi
 import ai.kilocode.jetbrains.api.model.Agent
-import com.intellij.openapi.components.Service
-import com.intellij.openapi.components.service
-import com.intellij.openapi.project.Project
+import ai.kilocode.rpc.dto.SessionDto
+import ai.kilocode.rpc.dto.SessionListDto
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -23,107 +20,43 @@ import kotlinx.coroutines.launch
 import java.util.concurrent.atomic.AtomicReference
 
 /**
- * Project-level backend service that loads project-scoped data
- * from the CLI server when the app reaches [KiloAppState.Ready].
+ * Single entry point for all directory-scoped data: project catalog
+ * (providers, agents, commands, skills) and session access.
  *
- * Construction is side-effect-free — call [start] to begin
- * watching [KiloBackendAppService.appState] and loading data.
- * [start] is idempotent and safe to call multiple times.
+ * **Not an IntelliJ service** — a plain class created by
+ * [KiloBackendWorkspaceManager] for each directory. Receives a
+ * pre-connected [DefaultApi] — no null checks needed.
  *
- * Each fetch is retried up to [MAX_RETRIES] times, matching the
- * pattern in [KiloBackendAppService].
+ * Session operations delegate to [KiloBackendSessionManager] with
+ * this workspace's [directory], so the frontend only needs one
+ * object per directory.
  */
-@Service(Service.Level.PROJECT)
-class KiloBackendProjectService private constructor(
+class KiloBackendWorkspace(
     val directory: String,
     private val cs: CoroutineScope,
-    private val appState: () -> StateFlow<KiloAppState>,
-    private val api: () -> DefaultApi?,
-    private val events: () -> SharedFlow<SseEvent>,
+    private val api: DefaultApi,
+    private val events: SharedFlow<SseEvent>,
+    private val sessions: KiloBackendSessionManager,
     private val log: KiloLog,
 ) {
-    /** IntelliJ service injection entry point. */
-    constructor(project: Project, cs: CoroutineScope) : this(
-        directory = project.basePath ?: "",
-        cs = cs,
-        appState = { service<KiloBackendAppService>().appState },
-        api = { service<KiloBackendAppService>().api },
-        events = { service<KiloBackendAppService>().events },
-        log = IntellijLog(KiloBackendProjectService::class.java),
-    )
-
     companion object {
         private const val MAX_RETRIES = 3
         private const val RETRY_DELAY_MS = 1000L
-
-        /** Test factory — no IntelliJ deps needed. */
-        internal fun create(
-            dir: String,
-            cs: CoroutineScope,
-            appState: () -> StateFlow<KiloAppState>,
-            api: () -> DefaultApi?,
-            log: KiloLog,
-            events: () -> SharedFlow<SseEvent> = { MutableStateFlow(SseEvent("", "")) },
-        ) = KiloBackendProjectService(dir, cs, appState, api, events, log)
     }
 
-    private val _state = MutableStateFlow<KiloProjectState>(KiloProjectState.Pending)
-    val state: StateFlow<KiloProjectState> = _state.asStateFlow()
+    private val _state = MutableStateFlow<KiloWorkspaceState>(KiloWorkspaceState.Pending)
+    val state: StateFlow<KiloWorkspaceState> = _state.asStateFlow()
 
-    private var watcher: Job? = null
     private var loader: Job? = null
     private var eventWatcher: Job? = null
 
-    /**
-     * Begin watching app state and loading project data when ready.
-     * Idempotent — safe to call multiple times.
-     */
-    fun start() {
-        if (watcher?.isActive == true) return
-        watcher = cs.launch {
-            appState().collect { state ->
-                when (state) {
-                    is KiloAppState.Ready -> load()
-                    is KiloAppState.Disconnected,
-                    is KiloAppState.Connecting -> {
-                        loader?.cancel()
-                        _state.value = KiloProjectState.Pending
-                    }
-                    is KiloAppState.Error -> {
-                        loader?.cancel()
-                        _state.value = KiloProjectState.Pending
-                    }
-                    is KiloAppState.Loading -> { /* wait for Ready */ }
-                }
-            }
-        }
-    }
-
-    /** Force a full reload of all project data. */
-    suspend fun reload() {
-        load()
-    }
-
-    /**
-     * Launch all project data fetches in parallel.
-     *
-     * Cancels any in-flight load first. Each resource is retried
-     * up to [MAX_RETRIES] times. Progress is tracked via
-     * [AtomicReference] and emitted as [KiloProjectState.Loading].
-     */
-    private fun load() {
+    /** Load project data (providers, agents, commands, skills). */
+    fun load() {
         loader?.cancel()
         loader = cs.launch {
-            val dir = directory
-            val client = api()
-            if (client == null) {
-                _state.value = KiloProjectState.Error("CLI server not connected")
-                return@launch
-            }
-
-            log.info("Loading project data for $dir")
-            val progress = AtomicReference(KiloProjectLoadProgress())
-            _state.value = KiloProjectState.Loading(progress.get())
+            log.info("Loading workspace data for $directory")
+            val progress = AtomicReference(KiloWorkspaceLoadProgress())
+            _state.value = KiloWorkspaceState.Loading(progress.get())
 
             var prov: ProviderData? = null
             var ag: AgentData? = null
@@ -134,44 +67,44 @@ class KiloBackendProjectService private constructor(
             try {
                 coroutineScope {
                     launch {
-                        val result = fetchWithRetry("providers") { fetchProviders(client, dir) }
+                        val result = fetchWithRetry("providers") { fetchProviders() }
                         if (result != null) {
                             prov = result
                             progress.updateAndGet { it.copy(providers = true) }
-                                .also { _state.value = KiloProjectState.Loading(it) }
+                                .also { _state.value = KiloWorkspaceState.Loading(it) }
                         } else {
                             synchronized(errors) { errors.add("providers") }
                             throw LoadFailure("providers")
                         }
                     }
                     launch {
-                        val result = fetchWithRetry("agents") { fetchAgents(client, dir) }
+                        val result = fetchWithRetry("agents") { fetchAgents() }
                         if (result != null) {
                             ag = result
                             progress.updateAndGet { it.copy(agents = true) }
-                                .also { _state.value = KiloProjectState.Loading(it) }
+                                .also { _state.value = KiloWorkspaceState.Loading(it) }
                         } else {
                             synchronized(errors) { errors.add("agents") }
                             throw LoadFailure("agents")
                         }
                     }
                     launch {
-                        val result = fetchWithRetry("commands") { fetchCommands(client, dir) }
+                        val result = fetchWithRetry("commands") { fetchCommands() }
                         if (result != null) {
                             cmd = result
                             progress.updateAndGet { it.copy(commands = true) }
-                                .also { _state.value = KiloProjectState.Loading(it) }
+                                .also { _state.value = KiloWorkspaceState.Loading(it) }
                         } else {
                             synchronized(errors) { errors.add("commands") }
                             throw LoadFailure("commands")
                         }
                     }
                     launch {
-                        val result = fetchWithRetry("skills") { fetchSkills(client, dir) }
+                        val result = fetchWithRetry("skills") { fetchSkills() }
                         if (result != null) {
                             sk = result
                             progress.updateAndGet { it.copy(skills = true) }
-                                .also { _state.value = KiloProjectState.Loading(it) }
+                                .also { _state.value = KiloWorkspaceState.Loading(it) }
                         } else {
                             synchronized(errors) { errors.add("skills") }
                             throw LoadFailure("skills")
@@ -179,50 +112,66 @@ class KiloBackendProjectService private constructor(
                     }
                 }
 
-                _state.value = KiloProjectState.Ready(
+                _state.value = KiloWorkspaceState.Ready(
                     providers = prov!!,
                     agents = ag!!,
                     commands = cmd!!,
                     skills = sk!!,
                 )
-                log.info("Project data loaded for $dir")
+                log.info("Workspace data loaded for $directory")
                 startWatchingGlobalSseEvents()
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                log.warn("Project data load failed for $dir: ${e.message}")
-                _state.value = KiloProjectState.Error(
+                log.warn("Workspace data load failed for $directory: ${e.message}")
+                _state.value = KiloWorkspaceState.Error(
                     "Failed to load: ${synchronized(errors) { errors.joinToString() }}"
                 )
             }
         }
     }
 
+    /** Force a full reload of workspace data. */
+    fun reload() {
+        load()
+    }
+
+    /** Stop all background work. */
+    fun stop() {
+        loader?.cancel()
+        eventWatcher?.cancel()
+        _state.value = KiloWorkspaceState.Pending
+    }
+
+    // ------ session access (delegates to session manager) ------
+
+    fun sessions(): SessionListDto = sessions.list(directory)
+    fun createSession(): SessionDto = sessions.create(directory)
+    fun deleteSession(id: String) = sessions.delete(id, directory)
+    fun seedStatuses() = sessions.seed(directory)
+
+    // ------ SSE watching ------
+
     /**
-     * Watch global SSE events that invalidate project-scoped data.
+     * Watch global SSE events that invalidate workspace data.
      *
-     * - `global.disposed` — the CLI server's global context was torn down.
-     *   All cached providers, agents, commands, and skills are stale — reload.
-     *
-     * - `server.instance.disposed` — a specific server instance was disposed.
-     *   Same effect — reload project data to pick up the new state.
+     * - `global.disposed` — CLI server context torn down, all data stale.
+     * - `server.instance.disposed` — server instance disposed, reload.
      *
      * Idempotent — only one watcher runs at a time.
      */
     private fun startWatchingGlobalSseEvents() {
         if (eventWatcher?.isActive == true) return
-        log.info("Started watching global SSE events for project $directory")
+        log.info("Started watching global SSE events for workspace $directory")
         eventWatcher = cs.launch {
-            events().collect { event ->
+            events.collect { event ->
                 when (event.type) {
-                    // CLI server context torn down — all project data is stale
                     "global.disposed" -> {
-                        log.info("SSE global.disposed — reloading project data for $directory")
+                        log.info("SSE global.disposed — reloading workspace data for $directory")
                         load()
                     }
-                    // Server instance disposed — same effect, reload project data
                     "server.instance.disposed" -> {
-                        log.info("SSE server.instance.disposed — reloading project data for $directory")
+                        log.info("SSE server.instance.disposed — reloading workspace data for $directory")
                         load()
                     }
                 }
@@ -230,11 +179,11 @@ class KiloBackendProjectService private constructor(
         }
     }
 
-    // ------ individual fetch methods ------
+    // ------ fetch methods ------
 
-    private fun fetchProviders(client: DefaultApi, dir: String): ProviderData? =
+    private fun fetchProviders(): ProviderData? =
         try {
-            val response = client.providerList(directory = dir)
+            val response = api.providerList(directory = directory)
             ProviderData(
                 providers = response.all.map { p ->
                     ProviderInfo(
@@ -263,9 +212,9 @@ class KiloBackendProjectService private constructor(
             null
         }
 
-    private fun fetchAgents(client: DefaultApi, dir: String): AgentData? =
+    private fun fetchAgents(): AgentData? =
         try {
-            val response = client.appAgents(directory = dir)
+            val response = api.appAgents(directory = directory)
             val mapped = response.map(::mapAgent)
             val visible = response.filter { it.mode != Agent.Mode.SUBAGENT && it.hidden != true }
             AgentData(
@@ -278,9 +227,9 @@ class KiloBackendProjectService private constructor(
             null
         }
 
-    private fun fetchCommands(client: DefaultApi, dir: String): List<CommandInfo>? =
+    private fun fetchCommands(): List<CommandInfo>? =
         try {
-            client.commandList(directory = dir).map { c ->
+            api.commandList(directory = directory).map { c ->
                 CommandInfo(
                     name = c.name,
                     description = c.description,
@@ -293,9 +242,9 @@ class KiloBackendProjectService private constructor(
             null
         }
 
-    private fun fetchSkills(client: DefaultApi, dir: String): List<SkillInfo>? =
+    private fun fetchSkills(): List<SkillInfo>? =
         try {
-            client.appSkills(directory = dir).map { s ->
+            api.appSkills(directory = directory).map { s ->
                 SkillInfo(
                     name = s.name,
                     description = s.description,
