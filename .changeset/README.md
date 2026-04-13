@@ -22,4 +22,4 @@ Short description of the change for the changelog.
 
 Use `patch` for bug fixes, `minor` for new features, `major` for breaking changes.
 
-Changeset files are consumed when the version bump PR is merged, updating `CHANGELOG.md` and bumping `package.json` versions.
+Changeset files are consumed at release time when the `publish.yml` workflow runs, generating changelog entries for the GitHub release notes.
