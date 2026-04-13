@@ -210,12 +210,27 @@ export namespace Provider {
         options: {},
       }
     },
+    // kilocode_change start
+    "github-copilot-enterprise": async () => {
+      return {
+        autoload: false,
+        async getModel(sdk: any, modelID: string, _options?: Record<string, any>) {
+          if (useLanguageModel(sdk)) return sdk.languageModel(modelID)
+          return shouldUseCopilotResponsesApi(modelID) ? sdk.responses(modelID) : sdk.chat(modelID)
+        },
+        options: {},
+      }
+    },
+    // kilocode_change end
     azure: async (provider) => {
+      // kilocode_change start
+      const url = provider.options?.baseURL ?? Env.get("AZURE_OPENAI_ENDPOINT")
       const resource = iife(() => {
         const name = provider.options?.resourceName
         if (typeof name === "string" && name.trim() !== "") return name
-        return Env.get("AZURE_RESOURCE_NAME")
+        return Env.get("AZURE_RESOURCE_NAME") ?? Env.get("AZURE_OPENAI_RESOURCE_NAME")
       })
+      // kilocode_change end
 
       return {
         autoload: false,
@@ -227,7 +242,11 @@ export namespace Provider {
             return sdk.responses(modelID)
           }
         },
-        options: {},
+        // kilocode_change start
+        options: {
+          ...(url ? { baseURL: url } : resource ? { resourceName: resource } : {}),
+        },
+        // kilocode_change end
         vars(_options) {
           return {
             ...(resource && { AZURE_RESOURCE_NAME: resource }),
