@@ -28,6 +28,7 @@ import { ProjectID } from "../../src/project/schema"
 import { Filesystem } from "../../src/util"
 import { ConfigPlugin } from "@/config/plugin"
 import { Npm } from "@/npm"
+import { hasIndexingPlugin } from "@kilocode/kilo-indexing/detect" // kilocode_change
 
 const emptyAccount = Layer.mock(Account.Service)({
   active: () => Effect.succeed(Option.none()),
@@ -1054,6 +1055,38 @@ test("merges plugin arrays from global and local configs", async () => {
     },
   })
 })
+
+// kilocode_change start
+test("does not hard-enable indexing plugin when default plugins are disabled", async () => {
+  const prev = process.env["KILO_DISABLE_DEFAULT_PLUGINS"]
+  process.env["KILO_DISABLE_DEFAULT_PLUGINS"] = "true"
+
+  try {
+    await using tmp = await tmpdir({
+      init: async (dir) => {
+        await Filesystem.write(
+          path.join(dir, "opencode.json"),
+          JSON.stringify({
+            $schema: "https://app.kilo.ai/config.json",
+            plugin: ["global-plugin-1"],
+          }),
+        )
+      },
+    })
+
+    await Instance.provide({
+      directory: tmp.path,
+      fn: async () => {
+        const config = await load()
+        expect(hasIndexingPlugin(config.plugin ?? [])).toBe(false)
+      },
+    })
+  } finally {
+    if (prev === undefined) delete process.env["KILO_DISABLE_DEFAULT_PLUGINS"]
+    else process.env["KILO_DISABLE_DEFAULT_PLUGINS"] = prev
+  }
+})
+// kilocode_change end
 
 test("does not error when only custom agent is a subagent", async () => {
   await using tmp = await tmpdir({

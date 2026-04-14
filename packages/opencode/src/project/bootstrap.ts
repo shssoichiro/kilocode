@@ -13,6 +13,7 @@ import { FileWatcher } from "@/file/watcher"
 import { KiloSessions } from "@/kilo-sessions/kilo-sessions" // kilocode_change
 import * as Effect from "effect/Effect"
 import { Config } from "@/config"
+import { KiloIndexing } from "@/kilocode/indexing" // kilocode_change
 
 export const InstanceBootstrap = Effect.gen(function* () {
   Log.Default.info("bootstrapping", { directory: Instance.directory })
@@ -22,6 +23,7 @@ export const InstanceBootstrap = Effect.gen(function* () {
   yield* Plugin.Service.use((svc) => svc.init())
   // kilocode_change start - bootstrap Kilo session ingest/remote subscriptions instead of ShareNext
   yield* Effect.promise(() => KiloSessions.init()).pipe(Effect.forkDetach)
+  yield* Effect.promise(() => KiloIndexing.init()).pipe(Effect.forkDetach)
   // kilocode_change end
   yield* Effect.all(
     [
