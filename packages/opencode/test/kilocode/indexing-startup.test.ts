@@ -1,0 +1,76 @@
+import { afterEach, describe, expect, test } from "bun:test"
+import type { Config } from "../../src/config"
+import { AppRuntime } from "../../src/effect/app-runtime"
+import { KiloIndexing } from "../../src/kilocode/indexing"
+import { InstanceBootstrap } from "../../src/project/bootstrap"
+import { Instance } from "../../src/project/instance"
+import { Server } from "../../src/server/server"
+import { Log } from "../../src/util"
+import { tmpdir } from "../fixture/fixture"
+
+Log.init({ print: false })
+
+const cfg: Partial<Config.Info> = {
+  plugin: ["@kilocode/kilo-indexing"],
+  indexing: {
+    enabled: true,
+    provider: "ollama",
+    vectorStore: "lancedb",
+    ollama: {
+      baseUrl: "http://127.0.0.1:1",
+    },
+  },
+}
+const configDir = process.env["KILO_CONFIG_DIR"]
+
+afterEach(async () => {
+  if (configDir === undefined) delete process.env["KILO_CONFIG_DIR"]
+  else process.env["KILO_CONFIG_DIR"] = configDir
+  await Instance.disposeAll()
+})
+
+describe("indexing startup degradation", () => {
+  test("keeps server routes alive when indexing initialization fails", async () => {
+    await using tmp = await tmpdir({ git: true, config: cfg })
+    process.env["KILO_CONFIG_DIR"] = tmp.path
+    const app = Server.Default().app
+
+    const config = await app.request("/config", {
+      headers: {
+        "x-kilo-directory": tmp.path,
+      },
+    })
+    expect(config.status).toBe(200)
+
+    const status = await app.request("/indexing/status", {
+      headers: {
+        "x-kilo-directory": tmp.path,
+      },
+    })
+    expect(status.status).toBe(200)
+
+    const body = await status.json()
+    expect(body).toMatchObject({
+      state: "Error",
+    })
+    expect(body.message).toContain("Failed to initialize:")
+  })
+
+  test("keeps degraded indexing queryable but unavailable", async () => {
+    await using tmp = await tmpdir({ git: true, config: cfg })
+    process.env["KILO_CONFIG_DIR"] = tmp.path
+
+    await Instance.provide({
+      directory: tmp.path,
+      init: () => AppRuntime.runPromise(InstanceBootstrap),
+      fn: async () => {
+        const status = await KiloIndexing.current()
+
+        expect(status.state).toBe("Error")
+        expect(status.message).toContain("Failed to initialize:")
+        expect(await KiloIndexing.available()).toBe(false)
+        expect(await KiloIndexing.search("boot failure")).toEqual([])
+      },
+    })
+  })
+})

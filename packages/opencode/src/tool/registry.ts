@@ -16,6 +16,7 @@ import { SkillTool } from "./skill"
 import * as Tool from "./tool"
 import { Config } from "../config"
 import { type ToolContext as PluginToolContext, type ToolDefinition } from "@kilocode/plugin"
+import { KiloIndexing } from "@/kilocode/indexing" // kilocode_change
 import z from "zod"
 import { Plugin } from "../plugin"
 import { Provider } from "../provider"
@@ -179,6 +180,14 @@ export const layer: Layer.Layer<
 
         const cfg = yield* config.get()
         const questionEnabled = KiloToolRegistry.question() // kilocode_change
+        // kilocode_change start
+        const indexing_enabled = yield* Effect.promise(() =>
+          KiloIndexing.available().catch((err: unknown) => {
+            log.error("failed to get indexing state, possible configuration error", { err })
+            return false
+          }),
+        )
+        // kilocode_change end
 
         const tool = yield* Effect.all({
           invalid: Tool.init(invalid),
@@ -223,7 +232,7 @@ export const layer: Layer.Layer<
             tool.patch,
             ...(KiloToolRegistry.plan() ? [tool.plan] : []), // kilocode_change
             ...KiloToolRegistry.suggest(tool.suggest), // kilocode_change
-            ...KiloToolRegistry.extra(kilo, cfg), // kilocode_change
+            ...KiloToolRegistry.extra(kilo, cfg, indexing_enabled), // kilocode_change
             ...(Flag.KILO_EXPERIMENTAL_LSP_TOOL ? [tool.lsp] : []),
           ],
           task: tool.task,

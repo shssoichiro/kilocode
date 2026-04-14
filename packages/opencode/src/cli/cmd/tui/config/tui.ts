@@ -19,8 +19,12 @@ import { makeRuntime } from "@/effect/runtime"
 import { Filesystem, Log } from "@/util"
 import { ConfigVariable } from "@/config/variable"
 import { Npm } from "@/npm"
+import { createRequire } from "module" // kilocode_change
+import { ensureIndexingPlugin, resolveIndexingPlugin } from "@/kilocode/indexing-feature" // kilocode_change
 
 const log = Log.create({ service: "tui.config" })
+const req = createRequire(import.meta.url) // kilocode_change
+const indexing = resolveIndexingPlugin(req, log) // kilocode_change
 
 export const Info = TuiInfo
 
@@ -145,6 +149,19 @@ const loadState = Effect.fn("TuiConfig.loadState")(function* (ctx: { directory: 
     ]).join(",")
   }
   acc.result.keybinds = ConfigKeybinds.Keybinds.parse(keybinds)
+
+  // kilocode_change start — inject indexing plugin to keep TUI aligned with server config
+  const before = acc.result.plugin ?? []
+  const after = ensureIndexingPlugin(before, Flag.KILO_DISABLE_DEFAULT_PLUGINS ? undefined : indexing)
+  if (after.length > before.length) {
+    const added = after[after.length - 1]
+    acc.result.plugin_origins = [
+      ...(acc.result.plugin_origins ?? []),
+      { spec: added, source: "builtin", scope: "global" as ConfigPlugin.Scope },
+    ]
+  }
+  acc.result.plugin = after
+  // kilocode_change end
 
   return {
     config: acc.result,

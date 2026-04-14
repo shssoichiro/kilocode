@@ -44,11 +44,16 @@ import { ConfigVariable } from "./variable"
 import { Npm } from "@/npm"
 // kilocode_change start
 import { KilocodeConfig } from "../kilocode/config/config"
+import { createRequire } from "module" // kilocode_change
+import { ensureIndexingPlugin, resolveIndexingPlugin } from "@/kilocode/indexing-feature" // kilocode_change
+import { IndexingConfig as KiloIndexingConfig } from "@kilocode/kilo-indexing/config" // kilocode_change
 import { makeRuntime } from "@/effect/run-service"
 import { unique } from "remeda"
 // kilocode_change end
 
 const log = Log.create({ service: "config" })
+const req = createRequire(import.meta.url) // kilocode_change
+const indexing = resolveIndexingPlugin(req, log) // kilocode_change
 
 // Custom merge function that concatenates array fields instead of replacing them
 function mergeConfigConcatArrays(target: Info, source: Info): Info {
@@ -96,6 +101,11 @@ export const Server = ConfigServer.Server.zod
 export const Layout = ConfigLayout.Layout.zod
 export type Layout = ConfigLayout.Layout
 
+// kilocode_change start - indexing configuration
+export const Indexing = KiloIndexingConfig
+export type Indexing = z.infer<typeof Indexing>
+// kilocode_change end
+
 // Schemas that still live at the zod layer (have .transform / .preprocess /
 // .meta not expressible in current Effect Schema) get referenced via a
 // ZodOverride-annotated Schema.Any.  Walker sees the annotation and emits the
@@ -103,6 +113,7 @@ export type Layout = ConfigLayout.Layout
 const AgentRef = Schema.Any.annotate({ [ZodOverride]: ConfigAgent.Info })
 const PermissionRef = Schema.Any.annotate({ [ZodOverride]: ConfigPermission.Info })
 const LogLevelRef = Schema.Any.annotate({ [ZodOverride]: Log.Level })
+const IndexingRef = Schema.Any.annotate({ [ZodOverride]: KiloIndexingConfig })
 
 const PositiveInt = Schema.Number.check(Schema.isInt()).check(Schema.isGreaterThan(0))
 const NonNegativeInt = Schema.Number.check(Schema.isInt()).check(Schema.isGreaterThanOrEqualTo(0))
@@ -154,6 +165,7 @@ const InfoSchema = Schema.Struct({
   remote_control: Schema.optional(Schema.Boolean).annotate({
     description: "Enable remote control of sessions via Kilo Cloud. Equivalent to running /remote on startup.",
   }),
+  indexing: Schema.optional(IndexingRef).annotate({ description: "Codebase indexing configuration" }), // kilocode_change
   // kilocode_change end
   // kilocode_change start - nullable for delete sentinel
   model: Schema.optional(Schema.NullOr(ConfigModelID)).annotate({
@@ -847,6 +859,18 @@ export const layer = Layer.effect(
         if (Flag.KILO_DISABLE_PRUNE) {
           result.compaction = { ...result.compaction, prune: false }
         }
+        // kilocode_change start — inject indexing plugin into both plugin list and origins
+        const before = result.plugin ?? []
+        const after = ensureIndexingPlugin(before, Flag.KILO_DISABLE_DEFAULT_PLUGINS ? undefined : indexing)
+        if (after.length > before.length) {
+          const added = after[after.length - 1]
+          result.plugin_origins = [
+            ...(result.plugin_origins ?? []),
+            { spec: added, source: "builtin", scope: "global" as ConfigPlugin.Scope },
+          ]
+        }
+        result.plugin = after
+        // kilocode_change end
 
         return {
           config: result,
