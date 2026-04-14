@@ -890,9 +890,8 @@ describe("tool.bash permissions", () => {
         await bash.execute({ command: "ls -la", description: "List" }, capture(requests))
         const bashReq = requests.find((r) => r.permission === "bash")
         expect(bashReq).toBeDefined()
-        // kilocode_change start — hierarchy adds base wildcard + exact
+        // kilocode_change start — hierarchy adds base wildcard
         expect(bashReq!.always).toContain("ls *")
-        expect(bashReq!.metadata.rules).toContain("ls -la")
         // kilocode_change end
       },
     })

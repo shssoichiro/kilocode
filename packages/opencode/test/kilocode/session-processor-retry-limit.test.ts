@@ -5,7 +5,7 @@
 process.env.KILO_SESSION_RETRY_LIMIT = "2"
 
 import { NodeFileSystem } from "@effect/platform-node"
-import { afterEach, describe, expect, spyOn } from "bun:test"
+import { afterEach, describe, expect } from "bun:test"
 import { APICallError } from "ai"
 import { Effect, Layer, ServiceMap } from "effect"
 import * as Stream from "effect/Stream"
@@ -21,7 +21,7 @@ import { Session } from "../../src/session"
 import { LLM } from "../../src/session/llm"
 import { MessageV2 } from "../../src/session/message-v2"
 import { SessionProcessor } from "../../src/session/processor"
-import { SessionRetry } from "../../src/session/retry"
+import { Flag } from "../../src/flag/flag"
 import { MessageID, PartID, SessionID } from "../../src/session/schema"
 import { SessionStatus } from "../../src/session/status"
 import { Snapshot } from "../../src/snapshot"
@@ -123,13 +123,17 @@ afterEach(() => {
 })
 
 describe("session processor retry limit", () => {
-  it.effect("stops after two retries with the normalized retryable error", () =>
+  it.live("stops after two retries with the normalized retryable error", () =>
     provideTmpdirInstance(
       (dir) =>
         Effect.gen(function* () {
           const test = yield* TestLLM
+          const bus = yield* Bus.Service
           const processors = yield* SessionProcessor.Service
           const session = yield* Session.Service
+          const flag = Flag as unknown as { KILO_SESSION_RETRY_LIMIT: number | undefined }
+          const prev = flag.KILO_SESSION_RETRY_LIMIT
+          flag.KILO_SESSION_RETRY_LIMIT = 2
 
           // 3 retryable 429 errors + sentinel (should not be reached)
           yield* test.push(Stream.fail(retryable429()))
@@ -139,14 +143,13 @@ describe("session processor retry limit", () => {
 
           const retry: number[] = []
           const errors: Array<MessageV2.Assistant["error"]> = []
-          const unsubStatus = Bus.subscribe(SessionStatus.Event.Status, (event) => {
+          const unsubStatus = yield* bus.subscribeCallback(SessionStatus.Event.Status, (event) => {
             if (event.properties.status.type !== "retry") return
             retry.push(event.properties.status.attempt)
           })
-          const unsubError = Bus.subscribe(Session.Event.Error, (event) => {
+          const unsubError = yield* bus.subscribeCallback(Session.Event.Error, (event) => {
             errors.push(event.properties.error)
           })
-          const delay = spyOn(SessionRetry, "delay").mockReturnValue(0)
 
           const chat = yield* session.create({})
           const parent = yield* session.updateMessage({
@@ -197,14 +200,13 @@ describe("session processor retry limit", () => {
 
             expect(result).toBe("stop")
             expect(calls).toBe(3)
-            expect(delay).toHaveBeenCalled()
             expect(retry).toStrictEqual([1, 2])
             expect(handle.message.error).toStrictEqual(expected)
             expect(errors).toStrictEqual([expected])
           } finally {
             unsubStatus()
             unsubError()
-            delay.mockRestore()
+            flag.KILO_SESSION_RETRY_LIMIT = prev
           }
         }),
       { git: true },

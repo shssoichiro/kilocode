@@ -111,6 +111,7 @@ describe("session processor network offline", () => {
       (dir) =>
         Effect.gen(function* () {
           const test = yield* TestLLM
+          const bus = yield* Bus.Service
           const processors = yield* SessionProcessor.Service
           const session = yield* Session.Service
 
@@ -134,7 +135,7 @@ describe("session processor network offline", () => {
 
           // Auto-reply to network reconnect request
           const statuses: unknown[] = []
-          const off = Bus.subscribe(SessionStatus.Event.Status, (event) => {
+          const off = yield* bus.subscribeCallback(SessionStatus.Event.Status, (event) => {
             statuses.push(event.properties.status)
           })
           const offAsk = Bus.subscribe(SessionNetwork.Event.Asked, (event) => {

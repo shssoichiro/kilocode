@@ -29,6 +29,11 @@ mock.module("@/provider/provider", () => ({
 mock.module("@/session/llm", () => ({
   LLM: {
     stream: async () => ({
+      // kilocode_change start
+      textStream: (async function* () {
+        yield mockStreamText
+      })(),
+      // kilocode_change end
       text: Promise.resolve(mockStreamText),
     }),
   },

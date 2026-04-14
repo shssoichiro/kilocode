@@ -1,6 +1,10 @@
-import { afterEach, test, expect } from "bun:test"
+import { afterAll, afterEach, test, expect } from "bun:test" // kilocode_change
+import fs from "fs/promises" // kilocode_change
 import os from "os"
+import path from "path" // kilocode_change
 import { Bus } from "../../src/bus"
+import { Config } from "../../src/config/config" // kilocode_change
+import { Global } from "../../src/global" // kilocode_change
 import { Permission } from "../../src/permission"
 import { PermissionID } from "../../src/permission/schema"
 import { Instance } from "../../src/project/instance"
@@ -10,6 +14,19 @@ import { MessageID, SessionID } from "../../src/session/schema"
 afterEach(async () => {
   await Instance.disposeAll()
 })
+
+// kilocode_change start
+// RATIONALE: reply("always") calls Config.updateGlobal() which writes bash
+// permission rules to the shared global config file. Clean up so other tests
+// in the same process don't see stale permission keys.
+afterAll(async () => {
+  const dir = Global.Path.config
+  for (const file of ["kilo.jsonc", "kilo.json", "config.json", "opencode.json", "opencode.jsonc"]) {
+    await fs.rm(path.join(dir, file), { force: true }).catch(() => {})
+  }
+  await Config.invalidate(true)
+})
+// kilocode_change end
 
 async function rejectAll(message?: string) {
   for (const req of await Permission.list()) {

@@ -33,7 +33,7 @@ describe("experimental.session.list", () => {
 
     try {
       await $`git worktree add ${worktree} -b test-branch-${Date.now()}`.cwd(first.path).quiet()
-      await Bun.write(path.join(first.path, ".git", "opencode"), "stale-project-id")
+      await Bun.write(path.join(first.path, ".git", "kilo"), "stale-project-id")
 
       const share = Config.get
       Config.get = async () => ({ share: "manual" }) as Awaited<ReturnType<typeof Config.get>>
@@ -51,6 +51,7 @@ describe("experimental.session.list", () => {
             session: await Session.create({ title: "root-session" }),
           }),
         })
+        await Bun.file(path.join(first.path, ".git", "kilo")).delete()
 
         const branch = await Instance.provide({
           directory: worktree,

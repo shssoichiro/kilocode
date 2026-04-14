@@ -60,7 +60,9 @@ describe("tui.selectSession endpoint", () => {
     })
   })
 
-  test("should return 400 when session ID format is invalid", async () => {
+  // kilocode_change start - bun bug on windows causes segfault
+  test.skipIf(process.platform === "win32")("should return 400 when session ID format is invalid", async () => {
+    // kilocode_change end
     await using tmp = await tmpdir({ git: true })
     await Instance.provide({
       directory: tmp.path,

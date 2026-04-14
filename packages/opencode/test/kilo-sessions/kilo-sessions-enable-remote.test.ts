@@ -79,8 +79,19 @@ describe("KiloSessions.enableRemote", () => {
   })
 
   afterEach(async () => {
+    delete process.env["KILO_DISABLE_SESSION_INGEST"]
+    delete process.env["KILO_SESSION_INGEST_URL"]
+
+    await using tmp = await tmpdir()
+    const { Instance } = await import("../../src/project/instance")
     const { KiloSessions } = await import("../../src/kilo-sessions/kilo-sessions")
-    KiloSessions.disableRemote()
+
+    await Instance.provide({
+      directory: tmp.path,
+      fn: async () => {
+        KiloSessions.disableRemote()
+      },
+    })
   })
 
   test("concurrent enableRemote shares one connection", async () => {
@@ -94,6 +105,7 @@ describe("KiloSessions.enableRemote", () => {
         await Promise.all([KiloSessions.enableRemote(), KiloSessions.enableRemote(), KiloSessions.enableRemote()])
         expect(state.connects).toBe(1)
         expect(KiloSessions.remoteStatus()).toEqual({ enabled: true, connected: true })
+        KiloSessions.disableRemote()
       },
     })
   })
@@ -196,6 +208,7 @@ describe("KiloSessions.enableRemote", () => {
         expect(state.disposes).toBe(1)
         expect(state.closes).toBe(1)
         expect(KiloSessions.remoteStatus()).toEqual({ enabled: true, connected: true })
+        KiloSessions.disableRemote()
       },
     })
   })
