@@ -1,19 +1,17 @@
-Use this tool to suggest a lightweight next step to the user. Suggestions are nudges, not questions: the user can accept one action or dismiss the suggestion entirely.
+Use this tool to suggest a local code review to the user after completing implementation work.
 
-Use cases:
-- Suggesting a code review after implementation appears complete
-- Suggesting running tests after making changes
-- Suggesting a clear next step after finishing a task
+This tool is ONLY for suggesting code review. Do NOT use it to suggest running tests, committing, pushing, or any other action.
 
 Guidelines:
-- Only suggest something when you are at least 90% confident it is appropriate
+- Only suggest review when you are at least 90% confident the user's request is fully addressed
+- Do not suggest review after every edit or partial implementation turn
+- Do not repeat a review suggestion that was already dismissed in this conversation
 - Keep the suggestion text concise and actionable
 - Provide 1-2 actions maximum
 - Make each action prompt self-contained so it can be injected as a synthetic user message
 - If you need a real answer from the user, use the `question` tool instead
 
-When suggesting a code review:
-- Use `/local-review-uncommitted` as the action prompt for uncommitted working-tree changes
+Choosing the right review command for the action prompt:
+- Use `/local-review-uncommitted` as the action prompt for uncommitted working-tree changes (staged, unstaged, and untracked files)
 - Use `/local-review` as the action prompt for committed branch-level changes
-- Only suggest review when the user's request appears fully addressed. Do not suggest it after every edit or partial implementation turn.
-- Do not repeat a review suggestion that was already dismissed in this conversation
+- Prefer `/local-review-uncommitted` when the work you just did has not been committed yet
