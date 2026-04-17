@@ -1,5 +1,4 @@
 import { Command } from "../../command"
-import { Flag } from "../../flag/flag"
 import { Log } from "../../util/log"
 import z from "zod"
 import DESCRIPTION from "./tool.txt"
@@ -58,7 +57,6 @@ export const SuggestTool = Tool.define<typeof Params, Meta>("suggest", {
       sessionID: ctx.sessionID,
       text: params.suggest,
       actions: params.actions,
-      blocking: Flag.KILO_CLIENT !== "vscode",
       tool: ctx.callID ? { messageID: ctx.messageID, callID: ctx.callID } : undefined,
     })
 
