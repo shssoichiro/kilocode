@@ -1286,6 +1286,9 @@ export type GlobalEvent = {
     | EventTodoUpdated
     | EventSessionStatus
     | EventSessionIdle
+    | EventSuggestionShown
+    | EventSuggestionAccepted
+    | EventSuggestionDismissed
     | EventSessionCompacted
     | EventCommandExecuted
     | EventVcsBranchUpdated

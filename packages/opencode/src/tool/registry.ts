@@ -23,6 +23,7 @@ import { ProviderID, type ModelID } from "../provider/schema"
 import { WebSearchTool } from "./websearch"
 import { CodeSearchTool } from "./codesearch"
 import { KiloToolRegistry } from "../kilocode/tool/registry" // kilocode_change
+import { makeRuntime } from "@/effect/run-service" // kilocode_change
 import { Flag } from "@/flag/flag"
 import { Log } from "@/util/log"
 import { LspTool } from "./lsp"
@@ -334,4 +335,9 @@ export namespace ToolRegistry {
       Layer.provide(Truncate.defaultLayer),
     ),
   )
+
+  // kilocode_change start
+  const { runPromise } = makeRuntime(Service, defaultLayer)
+  export const ids = () => runPromise((svc) => svc.ids())
+  // kilocode_change end
 }
