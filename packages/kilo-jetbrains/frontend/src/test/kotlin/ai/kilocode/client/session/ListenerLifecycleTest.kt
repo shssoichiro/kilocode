@@ -1,6 +1,7 @@
-package ai.kilocode.client.session.model
+package ai.kilocode.client.session
 
-import ai.kilocode.client.session.SessionControllerEvent
+import ai.kilocode.client.session.model.SessionModelEvent
+import ai.kilocode.client.session.model.SessionState
 import ai.kilocode.rpc.dto.ChatEventDto
 import ai.kilocode.rpc.dto.SessionStatusDto
 import com.intellij.openapi.util.Disposer

@@ -1,6 +1,6 @@
-package ai.kilocode.client.session.model
+package ai.kilocode.client.session
 
-import ai.kilocode.client.session.SessionControllerEvent
+import ai.kilocode.client.session.model.SessionModelEvent
 import ai.kilocode.rpc.dto.MessageWithPartsDto
 
 class HistoryLoadingTest : SessionControllerTestBase() {

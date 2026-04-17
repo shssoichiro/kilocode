@@ -1,6 +1,5 @@
-package ai.kilocode.client.session.model
+package ai.kilocode.client.session
 
-import ai.kilocode.client.session.SessionControllerEvent
 import ai.kilocode.rpc.dto.KiloAppStateDto
 import ai.kilocode.rpc.dto.KiloAppStatusDto
 

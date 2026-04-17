@@ -1,4 +1,4 @@
-package ai.kilocode.client.session.model
+package ai.kilocode.client.session
 
 import ai.kilocode.rpc.dto.ChatEventDto
 import ai.kilocode.rpc.dto.PermissionRequestDto

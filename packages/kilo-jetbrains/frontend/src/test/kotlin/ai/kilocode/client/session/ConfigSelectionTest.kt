@@ -1,6 +1,4 @@
-package ai.kilocode.client.session.model
-
-import ai.kilocode.client.session.SessionControllerEvent
+package ai.kilocode.client.session
 
 class ConfigSelectionTest : SessionControllerTestBase() {
 

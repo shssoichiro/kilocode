@@ -1,5 +1,6 @@
-package ai.kilocode.client.session.model
+package ai.kilocode.client.session
 
+import ai.kilocode.client.session.model.SessionModelEvent
 import ai.kilocode.rpc.dto.ChatEventDto
 
 class StatusComputationTest : SessionControllerTestBase() {

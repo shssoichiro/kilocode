@@ -1,9 +1,9 @@
-package ai.kilocode.client.session.model
+package ai.kilocode.client.session
 
 import ai.kilocode.client.app.KiloAppService
 import ai.kilocode.client.app.KiloSessionService
-import ai.kilocode.client.session.SessionController
-import ai.kilocode.client.session.SessionControllerEvent
+import ai.kilocode.client.session.model.SessionModel
+import ai.kilocode.client.session.model.SessionModelEvent
 import ai.kilocode.client.testing.FakeAppRpcApi
 import ai.kilocode.client.testing.FakeWorkspaceRpcApi
 import ai.kilocode.client.testing.FakeSessionRpcApi
