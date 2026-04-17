@@ -12,6 +12,8 @@ import ai.kilocode.client.app.Workspace
 import ai.kilocode.rpc.dto.AgentDto
 import ai.kilocode.rpc.dto.AgentsDto
 import ai.kilocode.rpc.dto.ChatEventDto
+import ai.kilocode.rpc.dto.KiloAppStateDto
+import ai.kilocode.rpc.dto.KiloAppStatusDto
 import ai.kilocode.rpc.dto.KiloWorkspaceStateDto
 import ai.kilocode.rpc.dto.KiloWorkspaceStatusDto
 import ai.kilocode.rpc.dto.MessageDto
@@ -37,7 +39,7 @@ import kotlinx.coroutines.runBlocking
  * Provides real IntelliJ Application/EDT/Disposer via [BasePlatformTestCase],
  * real frontend services wired to fake RPC backends, and shared helpers.
  */
-abstract class SessionManagerTestBase : BasePlatformTestCase() {
+abstract class SessionControllerTestBase : BasePlatformTestCase() {
 
     protected lateinit var rpc: FakeSessionRpcApi
     protected lateinit var appRpc: FakeAppRpcApi
@@ -126,12 +128,28 @@ abstract class SessionManagerTestBase : BasePlatformTestCase() {
 
     /** Create a model, attach both listeners, send initial prompt, and flush. */
     protected fun prompted(): Triple<SessionController, MutableList<SessionControllerEvent>, MutableList<SessionModelEvent>> {
+        appRpc.state.value = KiloAppStateDto(KiloAppStatusDto.READY)
+        projectRpc.state.value = workspaceReady()
         val m = model()
         val events = collect(m)
         val model = collectModel(m)
+        flush()
         edt { m.prompt("go") }
         flush()
         return Triple(m, events, model)
+    }
+
+    protected fun assertModel(expected: String, model: SessionModel) {
+        assertEquals(expected.trimIndent().trim(), model.toString().trim())
+    }
+
+    protected fun assertModel(expected: String, c: SessionController) {
+        assertModel(expected, c.model)
+    }
+
+    protected fun assertController(expected: String, c: SessionController, show: Boolean = true) {
+        assertEquals(expected.trimIndent().trim(), c.toString().trim())
+        assertEquals(show, c.model.showMessages)
     }
 
     // ------ DTO factories ------

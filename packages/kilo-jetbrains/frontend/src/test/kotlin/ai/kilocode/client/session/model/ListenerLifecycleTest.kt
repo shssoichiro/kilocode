@@ -5,7 +5,7 @@ import ai.kilocode.rpc.dto.ChatEventDto
 import ai.kilocode.rpc.dto.SessionStatusDto
 import com.intellij.openapi.util.Disposer
 
-class ListenerLifecycleTest : SessionManagerTestBase() {
+class ListenerLifecycleTest : SessionControllerTestBase() {
 
     fun `test listener removed on parent dispose`() {
         val m = model()

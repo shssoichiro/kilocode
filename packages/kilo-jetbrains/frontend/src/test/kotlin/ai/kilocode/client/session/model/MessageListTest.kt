@@ -2,7 +2,7 @@ package ai.kilocode.client.session.model
 
 import ai.kilocode.rpc.dto.ChatEventDto
 
-class MessageListTest : SessionManagerTestBase() {
+class MessageListTest : SessionControllerTestBase() {
 
     fun `test MessageUpdated adds message to ChatModel`() {
         val (m, _, model) = prompted()
@@ -26,6 +26,14 @@ class MessageListTest : SessionManagerTestBase() {
         assertTrue(model.any { it is SessionModelEvent.ContentAdded && it.messageId == "msg1" })
         val p = m.model.content("msg1", "prt1")
         assertTrue(p is Text)
+        assertModel(
+            """
+            assistant#msg1
+            text#prt1:
+              hello
+            """,
+            m,
+        )
     }
 
     fun `test PartDelta appends text to ChatModel`() {
@@ -42,6 +50,14 @@ class MessageListTest : SessionManagerTestBase() {
         assertNotNull(p)
         assertTrue(p is Text)
         assertEquals("hello world", (p as Text).content.toString())
+        assertModel(
+            """
+            assistant#msg1
+            text#prt1:
+              hello world
+            """,
+            m,
+        )
     }
 
     fun `test MessageRemoved removes from ChatModel`() {

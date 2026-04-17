@@ -75,13 +75,13 @@ class SessionUi(
                     val items = c.models.map { LabelPicker.Item(it.id, it.display, it.provider) }
                     val selected = c.model?.let { full -> items.firstOrNull { "${it.group}/${it.id}" == full }?.id }
                     prompt.model.setItems(items, selected)
-                    prompt.setReady(c.ready)
+                    prompt.setReady(c.isReady())
                 }
 
                 is SessionControllerEvent.ViewChanged -> cards.show(center, if (event.show) MESSAGES else STATUS)
 
                 is SessionControllerEvent.AppChanged,
-                is SessionControllerEvent.WorkspaceChanged -> {}
+                is SessionControllerEvent.WorkspaceChanged -> prompt.setReady(controller.model.isReady())
             }
         }
 

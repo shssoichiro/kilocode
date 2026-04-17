@@ -2,7 +2,7 @@ package ai.kilocode.client.session.model
 
 import ai.kilocode.client.session.SessionControllerEvent
 
-class ViewSwitchingTest : SessionManagerTestBase() {
+class ViewSwitchingTest : SessionControllerTestBase() {
 
     fun `test first prompt shows messages view`() {
         val m = model()
@@ -12,6 +12,12 @@ class ViewSwitchingTest : SessionManagerTestBase() {
         flush()
 
         assertTrue(events.any { it is SessionControllerEvent.ViewChanged && it.show })
+        assertController(
+            """
+            [app: DISCONNECTED] [workspace: PENDING]
+            """,
+            m,
+        )
     }
 
     fun `test ViewChanged not fired twice`() {

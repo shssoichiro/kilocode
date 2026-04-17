@@ -7,66 +7,99 @@ import ai.kilocode.rpc.dto.QuestionOptionDto
 import ai.kilocode.rpc.dto.QuestionRequestDto
 import ai.kilocode.rpc.dto.ToolRefDto
 
-class PromptLifecycleTest : SessionManagerTestBase() {
+class PromptLifecycleTest : SessionControllerTestBase() {
 
     fun `test PermissionAsked moves state to AwaitingPermission`() {
-        val (_, _, model) = prompted()
+        val (m, _, _) = prompted()
 
         emit(ChatEventDto.PermissionAsked("ses_test", permission("perm1")))
         flush()
 
-        val state = model.filterIsInstance<SessionModelEvent.StateChanged>().last().state
-        assertTrue(state is SessionState.AwaitingPermission)
-        assertEquals("perm1", (state as SessionState.AwaitingPermission).permission.id)
-        assertEquals("msg1", state.permission.tool!!.messageId)
+        assertController(
+            """
+            permission#perm1
+            tool: msg1/call1
+            name: edit
+            patterns: *.kt
+            always: <none>
+            file: src/A.kt
+            state: RESPONDING
+            metadata: kind=edit
+
+            [code] [kilo/gpt-5] [awaiting-permission]
+            """,
+            m,
+        )
     }
 
     fun `test PermissionReplied resumes Busy state`() {
-        val (_, _, model) = prompted()
+        val (m, _, _) = prompted()
 
         emit(ChatEventDto.PermissionAsked("ses_test", permission("perm1")))
         flush()
         emit(ChatEventDto.PermissionReplied("ses_test", "perm1"))
         flush()
 
-        val state = model.filterIsInstance<SessionModelEvent.StateChanged>().last().state
-        assertTrue(state is SessionState.Busy)
+        assertController(
+            """
+            [code] [kilo/gpt-5] [busy] [considering next steps]
+            """,
+            m,
+        )
     }
 
     fun `test QuestionAsked moves state to AwaitingQuestion`() {
-        val (_, _, model) = prompted()
+        val (m, _, _) = prompted()
 
         emit(ChatEventDto.QuestionAsked("ses_test", question("q1")))
         flush()
 
-        val state = model.filterIsInstance<SessionModelEvent.StateChanged>().last().state
-        assertTrue(state is SessionState.AwaitingQuestion)
-        assertEquals("q1", (state as SessionState.AwaitingQuestion).question.id)
-        assertEquals("call1", state.question.tool!!.callId)
+        assertController(
+            """
+            question#q1
+            tool: msg1/call1
+            header: Choice
+            prompt: Pick one
+            option: A - Option A
+            multiple: false
+            custom: true
+
+            [code] [kilo/gpt-5] [awaiting-question]
+            """,
+            m,
+        )
     }
 
     fun `test QuestionReplied resumes Busy state`() {
-        val (_, _, model) = prompted()
+        val (m, _, _) = prompted()
 
         emit(ChatEventDto.QuestionAsked("ses_test", question("q1")))
         flush()
         emit(ChatEventDto.QuestionReplied("ses_test", "q1"))
         flush()
 
-        val state = model.filterIsInstance<SessionModelEvent.StateChanged>().last().state
-        assertTrue(state is SessionState.Busy)
+        assertController(
+            """
+            [code] [kilo/gpt-5] [busy] [considering next steps]
+            """,
+            m,
+        )
     }
 
     fun `test QuestionRejected moves state to Idle`() {
-        val (_, _, model) = prompted()
+        val (m, _, _) = prompted()
 
         emit(ChatEventDto.QuestionAsked("ses_test", question("q1")))
         flush()
         emit(ChatEventDto.QuestionRejected("ses_test", "q1"))
         flush()
 
-        val state = model.filterIsInstance<SessionModelEvent.StateChanged>().last().state
-        assertEquals(SessionState.Idle, state)
+        assertController(
+            """
+            [code] [kilo/gpt-5] [idle]
+            """,
+            m,
+        )
     }
 
     private fun permission(id: String) = PermissionRequestDto(
@@ -75,7 +108,7 @@ class PromptLifecycleTest : SessionManagerTestBase() {
         permission = "edit",
         patterns = listOf("*.kt"),
         always = emptyList(),
-        metadata = mapOf("kind" to "edit"),
+        metadata = mapOf("kind" to "edit", "file" to "src/A.kt", "state" to "RESPONDING"),
         tool = ToolRefDto("msg1", "call1"),
     )
 

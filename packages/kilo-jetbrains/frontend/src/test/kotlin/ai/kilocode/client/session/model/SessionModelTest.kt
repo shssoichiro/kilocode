@@ -37,7 +37,16 @@ class SessionModelTest : UsefulTestCase() {
     fun `test initial app and workspace state`() {
         assertEquals(KiloAppStatusDto.DISCONNECTED, model.app.status)
         assertEquals(KiloWorkspaceStatusDto.PENDING, model.workspace.status)
+        assertFalse(model.isReady())
         assertEquals(SessionState.Idle, model.state)
+    }
+
+    fun `test isReady requires app and workspace readiness`() {
+        model.app = KiloAppStateDto(KiloAppStatusDto.READY)
+        assertFalse(model.isReady())
+
+        model.workspace = KiloWorkspaceStateDto(KiloWorkspaceStatusDto.READY)
+        assertTrue(model.isReady())
     }
 
     fun `test addMessage stores entry and fires MessageAdded`() {
@@ -218,16 +227,36 @@ class SessionModelTest : UsefulTestCase() {
         val q = question("q1")
         model.setState(SessionState.AwaitingQuestion(q))
 
-        val state = model.state as SessionState.AwaitingQuestion
-        assertEquals("q1", state.question.id)
+        assertModel(
+            """
+            question#q1
+            tool: <none>
+            header: Pick
+            prompt: Which option?
+            option: A - Option A
+            option: B - Option B
+            multiple: false
+            custom: true
+            """,
+        )
     }
 
     fun `test setState to AwaitingPermission stores permission`() {
         val p = permission("p1")
         model.setState(SessionState.AwaitingPermission(p))
 
-        val state = model.state as SessionState.AwaitingPermission
-        assertEquals("p1", state.permission.id)
+        assertModel(
+            """
+            permission#p1
+            tool: <none>
+            name: edit
+            patterns: *.kt
+            always: <none>
+            file: <none>
+            state: PENDING
+            metadata: <none>
+            """,
+        )
     }
 
     fun `test question tool ref is stored in awaiting question state`() {
@@ -239,10 +268,17 @@ class SessionModelTest : UsefulTestCase() {
 
         model.setState(SessionState.AwaitingQuestion(q))
 
-        val ref = (model.state as SessionState.AwaitingQuestion).question.tool
-        assertNotNull(ref)
-        assertEquals("msg1", ref!!.messageId)
-        assertEquals("call1", ref.callId)
+        assertModel(
+            """
+            question#q1
+            tool: msg1/call1
+            header: Choice
+            prompt: Pick one
+            option: A - Option A
+            multiple: false
+            custom: true
+            """,
+        )
     }
 
     fun `test permission fields are preserved in awaiting permission state`() {
@@ -266,12 +302,18 @@ class SessionModelTest : UsefulTestCase() {
 
         model.setState(SessionState.AwaitingPermission(p))
 
-        val state = model.state as SessionState.AwaitingPermission
-        assertEquals(listOf("*.kt"), state.permission.patterns)
-        assertEquals(listOf("src/**"), state.permission.always)
-        assertEquals("src/A.kt", state.permission.meta.filePath)
-        assertEquals(PermissionRequestState.RESPONDING, state.permission.state)
-        assertEquals("msg1", state.permission.tool!!.messageId)
+        assertModel(
+            """
+            permission#p1
+            tool: msg1/call1
+            name: edit
+            patterns: *.kt
+            always: src/**
+            file: src/A.kt
+            state: RESPONDING
+            metadata: kind=edit
+            """,
+        )
     }
 
     fun `test loadHistory populates typed contents and fires HistoryLoaded`() {
@@ -381,4 +423,8 @@ class SessionModelTest : UsefulTestCase() {
         always = emptyList(),
         meta = PermissionMeta(),
     )
+
+    private fun assertModel(expected: String) {
+        assertEquals(expected.trimIndent().trim(), model.toString().trim())
+    }
 }

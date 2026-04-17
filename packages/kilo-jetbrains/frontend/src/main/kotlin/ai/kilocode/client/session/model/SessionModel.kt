@@ -28,7 +28,6 @@ class SessionModel {
     var models: List<ModelItem> = emptyList()
     var agent: String? = null
     var model: String? = null
-    var ready: Boolean = false
     var showMessages: Boolean = false
 
     var state: SessionState = SessionState.Idle
@@ -48,6 +47,8 @@ class SessionModel {
     fun content(messageId: String, contentId: String): Content? = entries[messageId]?.parts?.get(contentId)
 
     fun isEmpty(): Boolean = entries.isEmpty()
+
+    fun isReady(): Boolean = app.status == KiloAppStatusDto.READY && workspace.status == KiloWorkspaceStatusDto.READY
 
     fun addMessage(dto: MessageDto): Message? {
         if (entries.containsKey(dto.id)) return null
@@ -160,6 +161,29 @@ class SessionModel {
     private fun fire(event: SessionModelEvent) {
         for (l in listeners) l.onEvent(event)
     }
+
+    override fun toString(): String {
+        val out = mutableListOf<String>()
+
+        for (msg in messages()) {
+            if (out.isNotEmpty()) out.add("---")
+            out.addAll(renderMessage(msg))
+        }
+
+        when (val state = this.state) {
+            is SessionState.AwaitingQuestion -> {
+                if (out.isNotEmpty()) out.add("---")
+                out.addAll(renderQuestion(state.question))
+            }
+            is SessionState.AwaitingPermission -> {
+                if (out.isNotEmpty()) out.add("---")
+                out.addAll(renderPermission(state.permission))
+            }
+            else -> {}
+        }
+
+        return out.joinToString("\n")
+    }
 }
 
 private fun parseToolState(raw: String?): ToolExecState = when (raw) {
@@ -173,3 +197,78 @@ private fun parseToolState(raw: String?): ToolExecState = when (raw) {
 data class AgentItem(val name: String, val display: String)
 
 data class ModelItem(val id: String, val display: String, val provider: String)
+
+private fun renderMessage(msg: Message): List<String> {
+    val out = mutableListOf<String>()
+    out.add("${msg.info.role}#${msg.info.id}")
+    for (part in msg.parts.values) {
+        when (part) {
+            is Text -> {
+                out.add("text#${part.id}:")
+                out.addAll(renderText(part.content))
+            }
+            is Reasoning -> {
+                out.add("reasoning#${part.id}:")
+                out.addAll(renderText(part.content))
+            }
+            is Tool -> out.add(renderTool(part))
+            is Compaction -> out.add("compaction#${part.id}")
+        }
+    }
+    return out
+}
+
+private fun renderQuestion(question: Question): List<String> {
+    val out = mutableListOf<String>()
+    out.add("question#${question.id}")
+    out.add("tool: ${renderToolRef(question.tool)}")
+    for (item in question.items) {
+        out.add("header: ${item.header}")
+        out.add("prompt: ${item.question}")
+        for (opt in item.options) {
+            out.add("option: ${opt.label} - ${opt.description}")
+        }
+        out.add("multiple: ${item.multiple}")
+        out.add("custom: ${item.custom}")
+    }
+    return out
+}
+
+private fun renderPermission(permission: Permission): List<String> {
+    val out = mutableListOf<String>()
+    out.add("permission#${permission.id}")
+    out.add("tool: ${renderToolRef(permission.tool)}")
+    out.add("name: ${permission.name}")
+    out.add("patterns: ${permission.patterns.joinToString(", ").ifEmpty { "<none>" }}")
+    out.add("always: ${permission.always.joinToString(", ").ifEmpty { "<none>" }}")
+    out.add("file: ${renderFile(permission.meta)}")
+    out.add("state: ${permission.state.name}")
+    val meta = permission.meta.raw.entries
+        .filter { it.key !in setOf("file", "path", "state") }
+        .sortedBy { it.key }
+        .joinToString(", ") { "${it.key}=${it.value}" }
+        .ifEmpty { "<none>" }
+    out.add("metadata: $meta")
+    return out
+}
+
+private fun renderToolRef(ref: ToolCallRef?): String = ref?.let { "${it.messageId}/${it.callId}" } ?: "<none>"
+
+private fun renderFile(meta: PermissionMeta): String {
+    meta.filePath?.takeIf { it.isNotBlank() }?.let { return it }
+    meta.raw["file"]?.takeIf { it.isNotBlank() }?.let { return it }
+    meta.raw["path"]?.takeIf { it.isNotBlank() }?.let { return it }
+    return "<none>"
+}
+
+private fun renderTool(tool: Tool): String {
+    val state = tool.state.name
+    val title = tool.title?.takeIf { it.isNotBlank() }?.let { " $it" } ?: ""
+    return "tool#${tool.id} ${tool.name} [$state]$title"
+}
+
+private fun renderText(text: CharSequence): List<String> {
+    val raw = text.toString()
+    if (raw.isEmpty()) return listOf("  <empty>")
+    return raw.split("\n").map { "  $it" }
+}

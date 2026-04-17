@@ -2,7 +2,7 @@ package ai.kilocode.client.session.model
 
 import ai.kilocode.client.session.SessionControllerEvent
 
-class SessionCreationTest : SessionManagerTestBase() {
+class SessionCreationTest : SessionControllerTestBase() {
 
     fun `test prompt creates session on first call`() {
         val m = model()
@@ -15,6 +15,12 @@ class SessionCreationTest : SessionManagerTestBase() {
         assertEquals(1, rpc.prompts.size)
         assertEquals("ses_test", rpc.prompts[0].first)
         assertTrue(events.any { it is SessionControllerEvent.ViewChanged && it.show })
+        assertController(
+            """
+            [app: DISCONNECTED] [workspace: PENDING]
+            """,
+            m,
+        )
     }
 
     fun `test prompt reuses existing session`() {

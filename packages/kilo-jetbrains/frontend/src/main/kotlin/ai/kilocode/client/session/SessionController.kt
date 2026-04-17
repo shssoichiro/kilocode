@@ -11,6 +11,7 @@ import ai.kilocode.client.session.model.SessionModelEvent
 import ai.kilocode.client.session.model.SessionState
 import ai.kilocode.client.session.model.Permission
 import ai.kilocode.client.session.model.PermissionMeta
+import ai.kilocode.client.session.model.PermissionRequestState
 import ai.kilocode.client.session.model.Question
 import ai.kilocode.client.session.model.QuestionItem
 import ai.kilocode.client.session.model.QuestionOption
@@ -68,6 +69,8 @@ class SessionController(
     private var partType: String? = null
     private var tool: String? = null
     private var eventJob: Job? = null
+
+    val ready: Boolean get() = model.isReady()
 
     fun addListener(parent: Disposable, listener: SessionControllerListener) {
         listeners.add(listener)
@@ -140,41 +143,42 @@ class SessionController(
         cs.launch {
             app.state.collect { state ->
                 if (state.status == KiloAppStatusDto.READY) app.fetchVersionAsync()
-                edt {
+                fire(SessionControllerEvent.AppChanged) {
                     model.app = state
                     model.version = app.version
-                    fire(SessionControllerEvent.AppChanged)
                 }
             }
         }
 
         cs.launch {
             workspace.state.collect { state ->
-                edt {
+                fire(SessionControllerEvent.WorkspaceChanged) {
                     model.workspace = state
-                    fire(SessionControllerEvent.WorkspaceChanged)
 
-                    if (state.status == KiloWorkspaceStatusDto.READY) {
-                        model.agents = state.agents?.agents?.map {
-                            AgentItem(it.name, it.displayName ?: it.name)
-                        } ?: emptyList()
+                    if (state.status != KiloWorkspaceStatusDto.READY) return@fire
 
-                        model.models = state.providers?.let { providers ->
-                            providers.providers
-                                .filter { it.id in providers.connected }
-                                .flatMap { provider ->
-                                    provider.models.map { (id, info) ->
-                                        ModelItem(id, info.name, provider.id)
-                                    }
+                    model.agents = state.agents?.agents?.map {
+                        AgentItem(it.name, it.displayName ?: it.name)
+                    } ?: emptyList()
+
+                    model.models = state.providers?.let { providers ->
+                        providers.providers
+                            .filter { it.id in providers.connected }
+                            .flatMap { provider ->
+                                provider.models.map { (id, info) ->
+                                    ModelItem(id, info.name, provider.id)
                                 }
-                        } ?: emptyList()
+                            }
+                    } ?: emptyList()
 
-                        if (this@SessionController.model.agent == null) this@SessionController.model.agent = state.agents?.default
-                        if (this@SessionController.model.model == null) this@SessionController.model.model = state.providers?.defaults?.entries?.firstOrNull()?.value
-
-                        this@SessionController.model.ready = true
-                        fire(SessionControllerEvent.WorkspaceReady)
+                    if (this@SessionController.model.agent == null) this@SessionController.model.agent = state.agents?.default
+                    if (this@SessionController.model.model == null) {
+                        this@SessionController.model.model = state.providers?.defaults?.entries?.firstOrNull()?.let { "${it.key}/${it.value}" }
                     }
+                }
+
+                if (state.status == KiloWorkspaceStatusDto.READY) {
+                    fire(SessionControllerEvent.WorkspaceReady)
                 }
             }
         }
@@ -317,13 +321,17 @@ class SessionController(
         else -> KiloBundle.message("session.status.considering")
     }
 
-    private fun fire(event: SessionControllerEvent) {
+    private fun fire(event: SessionControllerEvent, before: (() -> Unit)? = null) {
         val application = ApplicationManager.getApplication()
         if (application.isDispatchThread) {
+            before?.invoke()
             for (l in listeners) l.onEvent(event)
             return
         }
-        application.invokeLater { for (l in listeners) l.onEvent(event) }
+        application.invokeLater {
+            before?.invoke()
+            for (l in listeners) l.onEvent(event)
+        }
     }
 
     private fun edt(block: () -> Unit) {
@@ -334,18 +342,68 @@ class SessionController(
         eventJob?.cancel()
         cs.cancel()
     }
+
+    override fun toString(): String {
+        val out = mutableListOf<String>()
+        val body = model.toString().trim()
+        if (body.isNotEmpty()) out.add(body)
+        if (out.isNotEmpty()) out.add("")
+        out.add(statusLine())
+        return out.joinToString("\n")
+    }
+
+    private fun statusLine(): String {
+        val out = mutableListOf<String>()
+        model.agent?.takeIf { it.isNotBlank() }?.let { out.add("[$it]") }
+        model.model?.takeIf { it.isNotBlank() }?.let { out.add("[$it]") }
+
+        if (!ready) {
+            out.add("[app: ${model.app.status}]")
+            out.add("[workspace: ${model.workspace.status}]")
+            return out.joinToString(" ")
+        }
+
+        when (val state = model.state) {
+            is SessionState.Idle -> out.add("[idle]")
+            is SessionState.Busy -> {
+                out.add("[busy]")
+                out.add("[${state.text.toDumpText()}]")
+            }
+            is SessionState.AwaitingQuestion -> out.add("[awaiting-question]")
+            is SessionState.AwaitingPermission -> out.add("[awaiting-permission]")
+            is SessionState.Retry -> {
+                out.add("[retry]")
+                state.message.takeIf { it.isNotBlank() }?.let { out.add("[$it]") }
+            }
+            is SessionState.Offline -> {
+                out.add("[offline]")
+                state.message.takeIf { it.isNotBlank() }?.let { out.add("[$it]") }
+            }
+            is SessionState.Error -> {
+                out.add("[error]")
+                out.add("[${state.message}]")
+            }
+        }
+
+        return out.joinToString(" ")
+    }
 }
 
 private fun toPermission(dto: PermissionRequestDto): Permission {
     val ref = dto.tool?.let { ToolCallRef(it.messageID, it.callID) }
+    val file = dto.metadata["file"] ?: dto.metadata["path"]
+    val state = dto.metadata["state"]?.let { raw ->
+        PermissionRequestState.values().firstOrNull { item -> item.name.equals(raw, ignoreCase = true) }
+    } ?: PermissionRequestState.PENDING
     return Permission(
         id = dto.id,
         sessionId = dto.sessionID,
         name = dto.permission,
         patterns = dto.patterns,
         always = dto.always,
-        meta = PermissionMeta(raw = dto.metadata),
+        meta = PermissionMeta(filePath = file, raw = dto.metadata),
         tool = ref,
+        state = state,
     )
 }
 
@@ -361,4 +419,13 @@ private fun toQuestion(dto: QuestionRequestDto): Question {
         )
     }
     return Question(id = dto.id, items = items, tool = ref)
+}
+
+private fun String.toDumpText(): String {
+    val text = lowercase()
+        .replace("\u2026", "")
+        .replace("…", "")
+        .replace(Regex("[^a-z0-9]+"), " ")
+        .trim()
+    return text
 }
