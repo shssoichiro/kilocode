@@ -2,8 +2,7 @@ package ai.kilocode.client.session.ui
 
 import ai.kilocode.client.session.model.SessionModel
 import ai.kilocode.client.session.model.SessionModelEvent
-import ai.kilocode.client.session.model.SessionPhase
-import ai.kilocode.client.session.model.StatusState
+import ai.kilocode.client.session.model.SessionState
 import ai.kilocode.client.session.model.content.Compaction
 import ai.kilocode.client.session.model.content.Content
 import ai.kilocode.client.session.model.content.Message
@@ -70,7 +69,7 @@ class MessageListUi(
                 is SessionModelEvent.ContentAdded -> onContentAdded(event.messageId, event.content)
                 is SessionModelEvent.ContentUpdated -> onContentUpdated(event.messageId, event.content)
                 is SessionModelEvent.ContentDelta -> onContentDelta(event.messageId, event.contentId, event.delta)
-                is SessionModelEvent.PhaseChanged -> onPhase(event.phase)
+                is SessionModelEvent.StateChanged -> onState(event.state)
                 is SessionModelEvent.HistoryLoaded -> onHistory()
                 is SessionModelEvent.Cleared -> onCleared()
             }
@@ -106,18 +105,15 @@ class MessageListUi(
         refresh()
     }
 
-    private fun onPhase(phase: SessionPhase) {
-        when (phase) {
-            is SessionPhase.Working -> {
-                label.text = when (val s = phase.status) {
-                    is StatusState.Thinking -> s.text
-                    is StatusState.Working -> s.text
-                }
+    private fun onState(state: SessionState) {
+        when (state) {
+            is SessionState.Busy -> {
+                label.text = state.text
                 spinner.isVisible = true
             }
-            is SessionPhase.Error -> {
+            is SessionState.Error -> {
                 spinner.isVisible = false
-                val err = JBLabel(phase.message).apply {
+                val err = JBLabel(state.message).apply {
                     foreground = JBColor.RED
                     font = JBUI.Fonts.label()
                     border = JBUI.Borders.empty(4, 0)

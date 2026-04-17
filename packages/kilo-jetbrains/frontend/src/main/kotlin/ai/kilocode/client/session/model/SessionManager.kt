@@ -33,7 +33,7 @@ import kotlinx.coroutines.launch
  * event subscription happens before the prompt is sent, eliminating races.
  *
  * Owns [SessionModel] — the single source of truth for chat content and
- * phase. UIs observe model changes via [SessionModelEvent] on [chat].
+ * state. UIs observe model changes via [SessionModelEvent] on [chat].
  * Lifecycle events (app/workspace state, view switching) are published
  * via [SessionManagerEvent] to registered listeners.
  */
@@ -84,7 +84,7 @@ class SessionManager(
                 LOG.warn("prompt failed", e)
                 edt {
                     val msg = e.message ?: KiloBundle.message("session.error.prompt")
-                    chat.setPhase(SessionPhase.Error(msg))
+                    chat.setState(SessionState.Error(msg))
                 }
             }
         }
@@ -211,8 +211,8 @@ class SessionManager(
                 partType = event.part.type
                 tool = event.part.tool
                 chat.updateContent(event.part.messageID, event.part)
-                if (chat.phase is SessionPhase.Working) {
-                    chat.setPhase(SessionPhase.Working(status()))
+                if (chat.state is SessionState.Busy) {
+                    chat.setState(SessionState.Busy(status()))
                 }
             }
 
@@ -225,20 +225,20 @@ class SessionManager(
             is ChatEventDto.TurnOpen -> {
                 partType = null
                 tool = null
-                chat.setPhase(SessionPhase.Working(StatusState.Thinking(KiloBundle.message("session.status.considering"))))
+                chat.setState(SessionState.Busy(KiloBundle.message("session.status.considering")))
             }
 
             is ChatEventDto.TurnClose -> {
                 partType = null
                 tool = null
-                chat.setPhase(SessionPhase.Idle)
+                chat.setState(SessionState.Idle)
             }
 
             is ChatEventDto.Error -> {
                 partType = null
                 tool = null
                 val msg = event.error?.message ?: event.error?.type ?: KiloBundle.message("session.error.unknown")
-                chat.setPhase(SessionPhase.Error(msg, event.error?.type))
+                chat.setState(SessionState.Error(msg, event.error?.type))
             }
 
             is ChatEventDto.MessageRemoved -> {
@@ -246,45 +246,45 @@ class SessionManager(
             }
 
             is ChatEventDto.PermissionAsked -> {
-                chat.setPhase(SessionPhase.Prompting(toPermissionPrompt(event.request)))
+                chat.setState(SessionState.AwaitingPermission(toPermission(event.request)))
             }
 
             is ChatEventDto.PermissionReplied -> {
-                if (chat.phase is SessionPhase.Prompting) {
-                    chat.setPhase(SessionPhase.Working(StatusState.Thinking(KiloBundle.message("session.status.considering"))))
+                if (chat.state is SessionState.AwaitingPermission) {
+                    chat.setState(SessionState.Busy(KiloBundle.message("session.status.considering")))
                 }
             }
 
             is ChatEventDto.QuestionAsked -> {
-                chat.setPhase(SessionPhase.Prompting(toQuestionPrompt(event.request)))
+                chat.setState(SessionState.AwaitingQuestion(toQuestion(event.request)))
             }
 
             is ChatEventDto.QuestionReplied -> {
-                if (chat.phase is SessionPhase.Prompting) {
-                    chat.setPhase(SessionPhase.Working(StatusState.Thinking(KiloBundle.message("session.status.considering"))))
+                if (chat.state is SessionState.AwaitingQuestion) {
+                    chat.setState(SessionState.Busy(KiloBundle.message("session.status.considering")))
                 }
             }
 
             is ChatEventDto.QuestionRejected -> {
-                if (chat.phase is SessionPhase.Prompting) {
-                    chat.setPhase(SessionPhase.Idle)
+                if (chat.state is SessionState.AwaitingQuestion) {
+                    chat.setState(SessionState.Idle)
                 }
             }
 
             is ChatEventDto.SessionStatusChanged -> {
-                val phase = when (event.status.type) {
-                    "idle" -> SessionPhase.Idle
+                val state = when (event.status.type) {
+                    "idle" -> SessionState.Idle
                     "busy" -> {
-                        val current = chat.phase
-                        if (current is SessionPhase.Idle || current is SessionPhase.Error)
-                            SessionPhase.Working(StatusState.Thinking(KiloBundle.message("session.status.considering")))
+                        val current = chat.state
+                        if (current is SessionState.Idle || current is SessionState.Error)
+                            SessionState.Busy(KiloBundle.message("session.status.considering"))
                         else return // already in a more specific phase
                     }
-                    "retry" -> SessionPhase.Retry(0, event.status.message ?: "", 0)
-                    "offline" -> SessionPhase.Offline("", event.status.message ?: "")
+                    "retry" -> SessionState.Retry(event.status.message ?: "", 0, 0)
+                    "offline" -> SessionState.Offline(event.status.message ?: "", "")
                     else -> return
                 }
-                chat.setPhase(phase)
+                chat.setState(state)
             }
         }
     }
@@ -296,10 +296,10 @@ class SessionManager(
         }
     }
 
-    private fun status(): StatusState = when (partType) {
-        "reasoning" -> StatusState.Thinking(KiloBundle.message("session.status.thinking"))
-        "text" -> StatusState.Working(KiloBundle.message("session.status.writing"))
-        "tool" -> StatusState.Working(when (tool) {
+    private fun status(): String = when (partType) {
+        "reasoning" -> KiloBundle.message("session.status.thinking")
+        "text" -> KiloBundle.message("session.status.writing")
+        "tool" -> when (tool) {
             "task" -> KiloBundle.message("session.status.delegating")
             "todowrite", "todoread" -> KiloBundle.message("session.status.planning")
             "read" -> KiloBundle.message("session.status.gathering")
@@ -308,8 +308,8 @@ class SessionManager(
             "edit", "write" -> KiloBundle.message("session.status.editing")
             "bash" -> KiloBundle.message("session.status.commands")
             else -> KiloBundle.message("session.status.considering")
-        })
-        else -> StatusState.Thinking(KiloBundle.message("session.status.considering"))
+        }
+        else -> KiloBundle.message("session.status.considering")
     }
 
     private fun fire(event: SessionManagerEvent) {
@@ -331,9 +331,9 @@ class SessionManager(
     }
 }
 
-private fun toPermissionPrompt(dto: PermissionRequestDto): PromptState.Permitting {
+private fun toPermission(dto: PermissionRequestDto): Permission {
     val ref = dto.tool?.let { ToolCallRef(it.messageID, it.callID) }
-    val perm = Permission(
+    return Permission(
         id = dto.id,
         sessionId = dto.sessionID,
         name = dto.permission,
@@ -342,10 +342,9 @@ private fun toPermissionPrompt(dto: PermissionRequestDto): PromptState.Permittin
         meta = PermissionMeta(raw = dto.metadata),
         tool = ref,
     )
-    return PromptState.Permitting(dto.id, perm)
 }
 
-private fun toQuestionPrompt(dto: QuestionRequestDto): PromptState.Asking {
+private fun toQuestion(dto: QuestionRequestDto): Question {
     val ref = dto.tool?.let { ToolCallRef(it.messageID, it.callID) }
     val items = dto.questions.map {
         QuestionItem(
@@ -356,6 +355,5 @@ private fun toQuestionPrompt(dto: QuestionRequestDto): PromptState.Asking {
             custom = it.custom,
         )
     }
-    val q = Question(id = dto.id, items = items, tool = ref)
-    return PromptState.Asking(dto.id, q)
+    return Question(id = dto.id, items = items, tool = ref)
 }

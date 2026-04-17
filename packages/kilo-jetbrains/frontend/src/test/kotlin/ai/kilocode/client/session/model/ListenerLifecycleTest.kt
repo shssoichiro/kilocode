@@ -46,12 +46,12 @@ class ListenerLifecycleTest : SessionManagerTestBase() {
         assertEquals(events1.map { it::class }, events2.map { it::class })
     }
 
-    fun `test session status busy fires PhaseChanged to Working`() {
+    fun `test session status busy fires StateChanged to Busy`() {
         val (_, _, model) = prompted()
 
         emit(ChatEventDto.SessionStatusChanged("ses_test", SessionStatusDto("busy", null)))
         flush()
 
-        assertTrue(model.any { it is SessionModelEvent.PhaseChanged && (it.phase is SessionPhase.Working) })
+        assertTrue(model.any { it is SessionModelEvent.StateChanged && (it.state is SessionState.Busy) })
     }
 }

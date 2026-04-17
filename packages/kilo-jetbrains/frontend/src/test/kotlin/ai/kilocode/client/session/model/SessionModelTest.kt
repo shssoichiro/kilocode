@@ -50,7 +50,7 @@ class SessionModelTest : UsefulTestCase() {
     fun `test initial app and workspace state`() {
         assertEquals(KiloAppStatusDto.DISCONNECTED, model.app.status)
         assertEquals(KiloWorkspaceStatusDto.PENDING, model.workspace.status)
-        assertEquals(SessionPhase.Idle, model.phase)
+        assertEquals(SessionState.Idle, model.state)
     }
 
     fun `test addMessage stores entry and fires MessageAdded`() {
@@ -211,55 +211,54 @@ class SessionModelTest : UsefulTestCase() {
         assertTrue(events.isEmpty())
     }
 
-    fun `test setPhase stores phase and fires PhaseChanged`() {
-        val phase = SessionPhase.Working(StatusState.Thinking("thinking"))
-        model.setPhase(phase)
+    fun `test setState stores state and fires StateChanged`() {
+        val state = SessionState.Busy("thinking")
+        model.setState(state)
 
-        assertEquals(phase, model.phase)
-        assertEquals(phase, (events.single() as SessionModelEvent.PhaseChanged).phase)
+        assertEquals(state, model.state)
+        assertEquals(state, (events.single() as SessionModelEvent.StateChanged).state)
     }
 
-    fun `test setPhase to Error stores error data`() {
-        model.setPhase(SessionPhase.Error("something broke", "timeout"))
+    fun `test setState to Error stores error data`() {
+        model.setState(SessionState.Error("something broke", "timeout"))
 
-        val phase = model.phase as SessionPhase.Error
-        assertEquals("something broke", phase.message)
-        assertEquals("timeout", phase.kind)
+        val state = model.state as SessionState.Error
+        assertEquals("something broke", state.message)
+        assertEquals("timeout", state.kind)
     }
 
-    fun `test setPhase to Prompting with question`() {
+    fun `test setState to AwaitingQuestion stores question`() {
         val q = question("q1")
-        model.setPhase(SessionPhase.Prompting(PromptState.Asking("q1", q)))
+        model.setState(SessionState.AwaitingQuestion(q))
 
-        val phase = model.phase as SessionPhase.Prompting
-        assertTrue(phase.prompt is PromptState.Asking)
+        val state = model.state as SessionState.AwaitingQuestion
+        assertEquals("q1", state.question.id)
     }
 
-    fun `test setPhase to Prompting with permission`() {
+    fun `test setState to AwaitingPermission stores permission`() {
         val p = permission("p1")
-        model.setPhase(SessionPhase.Prompting(PromptState.Permitting("p1", p)))
+        model.setState(SessionState.AwaitingPermission(p))
 
-        val phase = model.phase as SessionPhase.Prompting
-        assertTrue(phase.prompt is PromptState.Permitting)
+        val state = model.state as SessionState.AwaitingPermission
+        assertEquals("p1", state.permission.id)
     }
 
-    fun `test question tool ref is stored in Prompting phase`() {
+    fun `test question tool ref is stored in awaiting question state`() {
         val q = Question(
             id = "q1",
             items = listOf(QuestionItem("Pick one", "Choice", listOf(QuestionOption("A", "Option A")), false, true)),
             tool = ToolCallRef("msg1", "call1"),
         )
 
-        model.setPhase(SessionPhase.Prompting(PromptState.Asking("q1", q)))
+        model.setState(SessionState.AwaitingQuestion(q))
 
-        val prompt = (model.phase as SessionPhase.Prompting).prompt as PromptState.Asking
-        val ref = prompt.question.tool
+        val ref = (model.state as SessionState.AwaitingQuestion).question.tool
         assertNotNull(ref)
         assertEquals("msg1", ref!!.messageId)
         assertEquals("call1", ref.callId)
     }
 
-    fun `test permission fields are preserved in Prompting phase`() {
+    fun `test permission fields are preserved in awaiting permission state`() {
         val p = Permission(
             id = "p1",
             sessionId = "ses",
@@ -278,14 +277,14 @@ class SessionModelTest : UsefulTestCase() {
             state = PermissionRequestState.RESPONDING,
         )
 
-        model.setPhase(SessionPhase.Prompting(PromptState.Permitting("p1", p)))
+        model.setState(SessionState.AwaitingPermission(p))
 
-        val prompt = (model.phase as SessionPhase.Prompting).prompt as PromptState.Permitting
-        assertEquals(listOf("*.kt"), prompt.permission.patterns)
-        assertEquals(listOf("src/**"), prompt.permission.always)
-        assertEquals("src/A.kt", prompt.permission.meta.filePath)
-        assertEquals(PermissionRequestState.RESPONDING, prompt.permission.state)
-        assertEquals("msg1", prompt.permission.tool!!.messageId)
+        val state = model.state as SessionState.AwaitingPermission
+        assertEquals(listOf("*.kt"), state.permission.patterns)
+        assertEquals(listOf("src/**"), state.permission.always)
+        assertEquals("src/A.kt", state.permission.meta.filePath)
+        assertEquals(PermissionRequestState.RESPONDING, state.permission.state)
+        assertEquals("msg1", state.permission.tool!!.messageId)
     }
 
     fun `test loadHistory populates typed contents and fires HistoryLoaded`() {
@@ -317,9 +316,9 @@ class SessionModelTest : UsefulTestCase() {
         assertFalse(entry.parts.containsKey("p2"))
     }
 
-    fun `test clear resets messages and phase`() {
+    fun `test clear resets messages and state`() {
         model.addMessage(msg("m1", "user"))
-        model.setPhase(SessionPhase.Working(StatusState.Working("busy")))
+        model.setState(SessionState.Busy("busy"))
         model.app = KiloAppStateDto(KiloAppStatusDto.READY)
         model.workspace = KiloWorkspaceStateDto(KiloWorkspaceStatusDto.READY)
         events.clear()
@@ -327,7 +326,7 @@ class SessionModelTest : UsefulTestCase() {
         model.clear()
 
         assertTrue(model.isEmpty())
-        assertEquals(SessionPhase.Idle, model.phase)
+        assertEquals(SessionState.Idle, model.state)
         assertTrue(events.single() is SessionModelEvent.Cleared)
     }
 

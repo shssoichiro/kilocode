@@ -38,7 +38,7 @@ class SessionModel {
     var ready: Boolean = false
     var showMessages: Boolean = false
 
-    var phase: SessionPhase = SessionPhase.Idle
+    var state: SessionState = SessionState.Idle
         private set
 
     private val listeners = mutableListOf<SessionModelEvent.Listener>()
@@ -100,14 +100,14 @@ class SessionModel {
         fire(SessionModelEvent.ContentDelta(messageId, contentId, delta))
     }
 
-    fun setPhase(phase: SessionPhase) {
-        this.phase = phase
-        fire(SessionModelEvent.PhaseChanged(phase))
+    fun setState(state: SessionState) {
+        this.state = state
+        fire(SessionModelEvent.StateChanged(state))
     }
 
     fun loadHistory(history: List<MessageWithPartsDto>) {
         entries.clear()
-        phase = SessionPhase.Idle
+        state = SessionState.Idle
         for (msg in history) {
             val item = Message(msg.info)
             for (part in msg.parts) {
@@ -121,7 +121,7 @@ class SessionModel {
 
     fun clear() {
         entries.clear()
-        phase = SessionPhase.Idle
+        state = SessionState.Idle
         fire(SessionModelEvent.Cleared)
     }
 

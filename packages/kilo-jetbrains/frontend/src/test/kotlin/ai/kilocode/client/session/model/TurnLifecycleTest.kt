@@ -5,17 +5,17 @@ import ai.kilocode.rpc.dto.MessageErrorDto
 
 class TurnLifecycleTest : SessionManagerTestBase() {
 
-    fun `test TurnOpen fires PhaseChanged to Working`() {
+    fun `test TurnOpen fires StateChanged to Busy`() {
         val (_, _, model) = prompted()
 
         emit(ChatEventDto.TurnOpen("ses_test"))
         flush()
 
-        val phase = model.filterIsInstance<SessionModelEvent.PhaseChanged>().lastOrNull()?.phase
-        assertTrue(phase is SessionPhase.Working)
+        val state = model.filterIsInstance<SessionModelEvent.StateChanged>().lastOrNull()?.state
+        assertTrue(state is SessionState.Busy)
     }
 
-    fun `test TurnClose fires PhaseChanged to Idle`() {
+    fun `test TurnClose fires StateChanged to Idle`() {
         val (_, _, model) = prompted()
 
         emit(ChatEventDto.TurnOpen("ses_test"))
@@ -23,19 +23,19 @@ class TurnLifecycleTest : SessionManagerTestBase() {
         emit(ChatEventDto.TurnClose("ses_test", "completed"))
         flush()
 
-        val phase = model.filterIsInstance<SessionModelEvent.PhaseChanged>().last().phase
-        assertEquals(SessionPhase.Idle, phase)
+        val state = model.filterIsInstance<SessionModelEvent.StateChanged>().last().state
+        assertEquals(SessionState.Idle, state)
     }
 
-    fun `test Error fires PhaseChanged to Error`() {
+    fun `test Error fires StateChanged to Error`() {
         val (_, _, model) = prompted()
 
         emit(ChatEventDto.Error("ses_test", MessageErrorDto(type = "APIError", message = "Bad Request")))
         flush()
 
-        val phase = model.filterIsInstance<SessionModelEvent.PhaseChanged>().last().phase
-        assertTrue(phase is SessionPhase.Error)
-        assertEquals("Bad Request", (phase as SessionPhase.Error).message)
+        val state = model.filterIsInstance<SessionModelEvent.StateChanged>().last().state
+        assertTrue(state is SessionState.Error)
+        assertEquals("Bad Request", (state as SessionState.Error).message)
     }
 
     fun `test Error with null message falls back to type`() {
@@ -44,7 +44,7 @@ class TurnLifecycleTest : SessionManagerTestBase() {
         emit(ChatEventDto.Error("ses_test", MessageErrorDto(type = "timeout", message = null)))
         flush()
 
-        val phase = model.filterIsInstance<SessionModelEvent.PhaseChanged>().last().phase as SessionPhase.Error
-        assertEquals("timeout", phase.message)
+        val state = model.filterIsInstance<SessionModelEvent.StateChanged>().last().state as SessionState.Error
+        assertEquals("timeout", state.message)
     }
 }

@@ -15,7 +15,7 @@ sealed class SessionModelEvent {
     data class ContentAdded(val messageId: String, val content: Content) : SessionModelEvent()
     data class ContentUpdated(val messageId: String, val content: Content) : SessionModelEvent()
     data class ContentDelta(val messageId: String, val contentId: String, val delta: String) : SessionModelEvent()
-    data class PhaseChanged(val phase: SessionPhase) : SessionModelEvent()
+    data class StateChanged(val state: SessionState) : SessionModelEvent()
     data object HistoryLoaded : SessionModelEvent()
     data object Cleared : SessionModelEvent()
 

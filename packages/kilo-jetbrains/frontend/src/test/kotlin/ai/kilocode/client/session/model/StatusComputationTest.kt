@@ -17,16 +17,16 @@ class StatusComputationTest : SessionManagerTestBase() {
         emit(ChatEventDto.PartUpdated("ses_test", part("prt1", "ses_test", "msg1", "tool", tool = "bash")))
         flush()
 
-        val phase = model.filterIsInstance<SessionModelEvent.PhaseChanged>()
-            .mapNotNull { it.phase as? SessionPhase.Working }
-            .lastOrNull { it.status is StatusState.Working }
+        val state = model.filterIsInstance<SessionModelEvent.StateChanged>()
+            .mapNotNull { it.state as? SessionState.Busy }
+            .lastOrNull()
 
-        assertNotNull(phase)
-        val text = (phase!!.status as StatusState.Working).text
+        assertNotNull(state)
+        val text = state!!.text
         assertEquals(KiloBundle.message("session.status.commands"), text)
     }
 
-    fun `test PartUpdated after TurnClose does not fire PhaseChanged`() {
+    fun `test PartUpdated after TurnClose does not fire StateChanged`() {
         val (_, _, model) = prompted()
 
         emit(ChatEventDto.MessageUpdated("ses_test", msg("msg1", "ses_test", "assistant")))
@@ -36,12 +36,12 @@ class StatusComputationTest : SessionManagerTestBase() {
         emit(ChatEventDto.TurnClose("ses_test", "completed"))
         flush()
 
-        val before = model.filterIsInstance<SessionModelEvent.PhaseChanged>().size
+        val before = model.filterIsInstance<SessionModelEvent.StateChanged>().size
 
         emit(ChatEventDto.PartUpdated("ses_test", part("prt1", "ses_test", "msg1", "text", text = "late")))
         flush()
 
-        val after = model.filterIsInstance<SessionModelEvent.PhaseChanged>().size
+        val after = model.filterIsInstance<SessionModelEvent.StateChanged>().size
         assertEquals(before, after)
     }
 }

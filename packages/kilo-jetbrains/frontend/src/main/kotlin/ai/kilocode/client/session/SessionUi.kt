@@ -6,7 +6,7 @@ import ai.kilocode.client.app.Workspace
 import ai.kilocode.client.session.model.SessionManager
 import ai.kilocode.client.session.model.SessionManagerEvent
 import ai.kilocode.client.session.model.SessionModelEvent
-import ai.kilocode.client.session.model.SessionPhase
+import ai.kilocode.client.session.model.SessionState
 import ai.kilocode.client.session.ui.LabelPicker
 import ai.kilocode.client.session.ui.MessageListUi
 import ai.kilocode.client.session.ui.PromptPanel
@@ -87,11 +87,11 @@ class SessionUi(
             }
         }
 
-        // Model events — phase drives the prompt busy state
+        // Model events — state drives the prompt busy state
         model.chat.addListener(this) { event ->
             when (event) {
-                is SessionModelEvent.PhaseChanged -> {
-                    val busy = event.phase is SessionPhase.Working || event.phase is SessionPhase.Prompting
+                is SessionModelEvent.StateChanged -> {
+                    val busy = event.state.isBusy()
                     prompt.setBusy(busy)
                     scrollToBottom()
                 }
@@ -117,4 +117,10 @@ class SessionUi(
     }
 
     override fun dispose() {}
+}
+
+private fun SessionState.isBusy(): Boolean = when (this) {
+    is SessionState.Idle -> false
+    is SessionState.Error -> false
+    else -> true
 }
