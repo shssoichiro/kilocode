@@ -176,7 +176,7 @@ export class KiloClawProvider implements vscode.Disposable {
 
       // Connect to Stream Chat
       try {
-        await this.connectChat(credentials)
+        await this.connectChat(credentials, gen)
       } catch (err: unknown) {
         if (this.stale(gen)) return
         const msg = err instanceof Error ? err.message : String(err)
@@ -287,11 +287,22 @@ export class KiloClawProvider implements vscode.Disposable {
     }
   }
 
-  private async connectChat(creds: ChatCredentials): Promise<void> {
+  private async connectChat(creds: ChatCredentials, gen: number): Promise<void> {
     // Disconnect previous client to avoid duplicate websockets/listeners
     this.disconnectChat()
 
-    this.chat = await connect(creds)
+    const client = await connect(creds)
+
+    // If the panel was disposed or reinitialized while connect() was in flight,
+    // tear down the freshly-created client immediately to avoid leaked websockets.
+    if (this.stale(gen)) {
+      client.disconnect().catch((err) => {
+        console.error("[Kilo New] KiloClaw stale disconnect failed:", err?.message ?? err)
+      })
+      return
+    }
+
+    this.chat = client
 
     // Load history
     const bot = `bot-${creds.channelId.replace(/^default-/, "")}`
