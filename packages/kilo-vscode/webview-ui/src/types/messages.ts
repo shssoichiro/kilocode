@@ -1071,6 +1071,12 @@ export interface FavoritesLoadedMessage {
   favorites: ModelSelection[]
 }
 
+// Per-mode model selections loaded from model.json (extension → webview)
+export interface ModelSelectionsLoadedMessage {
+  type: "modelSelectionsLoaded"
+  selections: Record<string, ModelSelection>
+}
+
 export interface BranchInfo {
   name: string
   isLocal: boolean
@@ -1627,6 +1633,7 @@ export type ExtensionMessage =
   | CustomProviderModelsFetchedMessage
   | RecentsLoadedMessage
   | FavoritesLoadedMessage
+  | ModelSelectionsLoadedMessage
   | LanguageChangedMessage
   | ContinueInWorktreeProgressMessage
   | WorktreeStatsLoadedMessage
@@ -2434,6 +2441,23 @@ export interface RequestFavoritesMessage {
   type: "requestFavorites"
 }
 
+// Per-mode model selection persistence (webview → extension)
+export interface PersistModelSelectionRequest {
+  type: "persistModelSelection"
+  agent: string
+  providerID: string
+  modelID: string
+}
+
+export interface ClearModelSelectionRequest {
+  type: "clearModelSelection"
+  agent: string
+}
+
+export interface RequestModelSelectionsMessage {
+  type: "requestModelSelections"
+}
+
 // Continue in Worktree: transfer sidebar session + git state to an isolated worktree
 export interface ContinueInWorktreeRequest {
   type: "continueInWorktree"
@@ -2638,6 +2662,9 @@ export type WebviewMessage =
   | RequestRecentsMessage
   | ToggleFavoriteRequest
   | RequestFavoritesMessage
+  | PersistModelSelectionRequest
+  | ClearModelSelectionRequest
+  | RequestModelSelectionsMessage
   | ToggleRemoteMessage
   | SetRemoteEnabledMessage
   | RequestRemoteStatusMessage
