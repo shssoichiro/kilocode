@@ -933,6 +933,98 @@ describe("plan follow-up", () => {
       expect(part.text).not.toContain("## Todo List")
     }))
 
+  test("ask - fires session.created before generateHandover resolves on Start new session", () =>
+    withInstance(async () => {
+      // Regression guard: the VS Code extension gates `session.created` SSE events
+      // behind a 30-second pendingFollowup TTL. If startNew awaits the handover
+      // LLM call before creating the session, a slow LLM response expires the TTL
+      // and the webview never learns about the new session. This test asserts the
+      // session is created *before* the handover resolves, guaranteeing the SSE
+      // event fires while the TTL is still fresh.
+      const seeded = await seed({ text: "1. Build" })
+
+      let createdAt: number | undefined
+      let handoverResolvedAt: number | undefined
+      const unsub = Bus.subscribe(Session.Event.Created, (event) => {
+        // Ignore the seeded planning session; we only care about the follow-up.
+        if (event.properties.info.id === seeded.sessionID) return
+        if (createdAt === undefined) createdAt = performance.now()
+      })
+
+      const deferred = Promise.withResolvers<string>()
+      const agentSpy = spyOn(PlanFollowupRuntime, "agent").mockResolvedValue(fakeAgent as any)
+      const modelSpy = spyOn(PlanFollowupRuntime, "model").mockResolvedValue(fakeModel)
+      const llmSpy = spyOn(LLM, "stream").mockResolvedValue({
+        text: deferred.promise.then((t) => {
+          handoverResolvedAt = performance.now()
+          return t
+        }),
+      } as any)
+      const loop = spyOn(PlanFollowupRuntime, "loop").mockResolvedValue({
+        info: {
+          id: MessageID.make("msg_test"),
+          role: "assistant",
+          sessionID: SessionID.make("ses_test"),
+          time: { created: Date.now() },
+          parentID: MessageID.make("msg_parent"),
+          modelID: ModelID.make("test"),
+          providerID: ProviderID.make("test"),
+          mode: "code",
+          agent: "code",
+          path: { cwd: "/tmp", root: "/tmp" },
+          cost: 0,
+          tokens: {
+            total: 0,
+            input: 0,
+            output: 0,
+            reasoning: 0,
+            cache: { read: 0, write: 0 },
+          },
+        },
+        parts: [],
+      } as MessageV2.WithParts)
+      using _ = {
+        [Symbol.dispose]() {
+          agentSpy.mockRestore()
+          modelSpy.mockRestore()
+          llmSpy.mockRestore()
+          loop.mockRestore()
+          unsub()
+        },
+      }
+
+      const pending = PlanFollowup.ask({
+        sessionID: seeded.sessionID,
+        messages: seeded.messages,
+        abort: AbortSignal.any([]),
+      })
+
+      const item = await waitQuestion(seeded.sessionID)
+      expect(item).toBeDefined()
+      if (!item) return
+      await question.reply({
+        requestID: item.id,
+        answers: [[PlanFollowup.ANSWER_NEW_SESSION]],
+      })
+
+      // Poll until session.created fires. With the fix, this happens promptly
+      // because Session.create runs before generateHandover. Without the fix,
+      // startNew would still be blocked on the deferred LLM stream.
+      for (let i = 0; i < 100; i++) {
+        if (createdAt !== undefined) break
+        await Bun.sleep(10)
+      }
+      expect(createdAt).toBeDefined()
+      // Handover must still be pending; if it had resolved, the race is open.
+      expect(handoverResolvedAt).toBeUndefined()
+
+      deferred.resolve("## Discoveries\n\nexample")
+      await expect(pending).resolves.toBe("break")
+
+      expect(handoverResolvedAt).toBeDefined()
+      expect(createdAt!).toBeLessThan(handoverResolvedAt!)
+    }))
+
   test("ask - returns break when assistant text is empty", () =>
     withInstance(async () => {
       const seeded = await seed({ text: "   " })

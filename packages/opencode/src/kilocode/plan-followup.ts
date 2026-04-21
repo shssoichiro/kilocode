@@ -320,15 +320,23 @@ export namespace PlanFollowup {
       model: input.model,
     })
     const session = await Session.get(input.sessionID)
-    const [handover, todos] = await Promise.all([
-      generateHandover({ messages: input.messages, model: input.model, abort: input.abort }),
-      PlanFollowupRuntime.todo.get(input.sessionID),
-    ])
 
     await Instance.provide({
       directory: session.directory,
       fn: async () => {
+        // Create the session FIRST so session.created fires immediately while the
+        // VS Code extension's pendingFollowup gate (30s TTL) is still fresh. The
+        // handover generation below can take tens of seconds and must not block
+        // the SSE event that drives the webview tab switch.
+        const next = await Session.create({})
+        await Bus.publish(TuiEvent.SessionSelect, { sessionID: next.id })
+
         const file = Session.plan(session)
+        const [handover, todos] = await Promise.all([
+          generateHandover({ messages: input.messages, model: input.model, abort: input.abort }),
+          PlanFollowupRuntime.todo.get(input.sessionID),
+        ])
+
         const sections = [
           `Plan file: ${file}\nRead this file first and treat it as the source of truth for implementation.`,
           `Implement the following plan:\n\n${input.plan}`,
@@ -343,7 +351,6 @@ export namespace PlanFollowup {
           sections.push(`## Todo List\n\n${todoList}`)
         }
 
-        const next = await Session.create({})
         await inject({
           sessionID: next.id,
           agent: "code",
@@ -354,7 +361,6 @@ export namespace PlanFollowup {
         if (todos.length) {
           await PlanFollowupRuntime.todo.update({ sessionID: next.id, todos })
         }
-        await Bus.publish(TuiEvent.SessionSelect, { sessionID: next.id })
         void Instance.provide({
           directory: next.directory,
           fn: () => PlanFollowupRuntime.loop(next.id),
