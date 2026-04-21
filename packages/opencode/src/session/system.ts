@@ -66,7 +66,7 @@ export namespace SystemPrompt {
     if (model.api.id.includes("claude")) return [PROMPT_ANTHROPIC]
     if (model.api.id.toLowerCase().includes("trinity")) return [PROMPT_TRINITY]
     if (model.api.id.toLowerCase().includes("kimi")) return [PROMPT_KIMI]
-    if (model.api.id.toLowerCase().includes("ling")) return [PROMPT_LING] // kilocode_change
+    if (model.api.id.toLowerCase().startsWith("ling")) return [PROMPT_LING] // kilocode_change
     return [PROMPT_DEFAULT]
   }
 

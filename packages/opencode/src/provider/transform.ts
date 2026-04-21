@@ -348,7 +348,7 @@ export namespace ProviderTransform {
       }
       return 0.6
     }
-    if (model.api.id.toLowerCase().includes("ling")) return 0.3 // kilocode_change
+    if (model.api.id.toLowerCase().startsWith("ling")) return 0.3 // kilocode_change
     return undefined
   }
 
@@ -358,7 +358,7 @@ export namespace ProviderTransform {
     if (["minimax-m2", "gemini", "kimi-k2.5", "kimi-k2p5", "kimi-k2-5"].some((s) => id.includes(s))) {
       return 0.95
     }
-    if (model.api.id.toLowerCase().includes("ling")) return 0.95 // kilocode_change
+    if (model.api.id.toLowerCase().startsWith("ling")) return 0.95 // kilocode_change
     return undefined
   }
 
@@ -369,7 +369,7 @@ export namespace ProviderTransform {
       return 20
     }
     if (id.includes("gemini")) return 64
-    if (model.api.id.toLowerCase().includes("ling")) return 20 // kilocode_change
+    if (model.api.id.toLowerCase().startsWith("ling")) return 20 // kilocode_change
     return undefined
   }
 
