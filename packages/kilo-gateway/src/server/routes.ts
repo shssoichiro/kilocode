@@ -32,6 +32,7 @@ interface KiloRoutesDeps extends ImportDeps {
   Auth: Auth
   ModelCache: ModelCache
   z: Z
+  Instance: ImportDeps["Instance"] & { disposeAll(): Promise<void> }
 }
 
 /**
@@ -207,6 +208,7 @@ export function createKiloRoutes(deps: KiloRoutesDeps) {
 
         ModelCache.clear("kilo")
         clearModesCache()
+        await Instance.disposeAll()
 
         return c.json(true)
       },
