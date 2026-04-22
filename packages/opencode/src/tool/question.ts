@@ -10,6 +10,7 @@ const parameters = z.object({
 
 type Metadata = {
   answers: ReadonlyArray<Question.Answer>
+  dismissed?: boolean // kilocode_change
 }
 
 export const QuestionTool = Tool.define<typeof parameters, Metadata, Question.Service>(
@@ -33,7 +34,7 @@ export const QuestionTool = Tool.define<typeof parameters, Metadata, Question.Se
             })
             .pipe(Effect.catchTag("QuestionRejectedError", () => Effect.succeed<"dismissed">("dismissed")))
           if (answers === "dismissed") {
-            const dismissed: Metadata = { answers: [] }
+            const dismissed: Metadata = { answers: [], dismissed: true }
             return {
               title: "Question dismissed",
               output: "User dismissed the question.",
