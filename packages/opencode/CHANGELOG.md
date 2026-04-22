@@ -1,5 +1,13 @@
 # @kilocode/cli
 
+## 7.2.19
+
+### Patch Changes
+
+- Updated dependencies [[`3b73cf4`](https://github.com/Kilo-Org/kilocode/commit/3b73cf474ee7bd81ac1cb4a0153906059f3a2d3a)]:
+  - @kilocode/kilo-gateway@7.2.19
+  - @kilocode/kilo-telemetry@7.2.19
+
 ## 7.2.18
 
 ### Patch Changes
