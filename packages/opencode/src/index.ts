@@ -35,6 +35,7 @@ import { EOL } from "os"
 import { PrCommand } from "./cli/cmd/pr"
 import { SessionCommand } from "./cli/cmd/session"
 import { RemoteCommand } from "./cli/cmd/remote" // kilocode_change
+import { DevAliasCommand } from "./kilocode/cli/dev-alias" // kilocode_change
 // kilocode_change start - Import telemetry, instance disposal, and legacy migration
 import { Telemetry } from "@kilocode/kilo-telemetry"
 import { Instance } from "./project/instance" // kilocode_change
@@ -230,6 +231,7 @@ let cli = yargs(args) // kilocode_change
   .command(SessionCommand)
   .command(RemoteCommand) // kilocode_change
   .command(ConfigCLICommand) // kilocode_change
+  .command(DevAliasCommand) // kilocode_change
   .command(PluginCommand)
   .command(DbCommand)
 

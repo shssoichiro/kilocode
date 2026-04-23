@@ -48,6 +48,39 @@ To run Kilo CLI in the root of the repo itself:
 bun dev .
 ```
 
+### Running Kilo CLI from any folder
+
+`bin/kilodev` is a self-locating launcher that runs this checkout from wherever you invoke it. Running it with no arguments launches the TUI pointed at the caller's directory; any arguments are forwarded to the CLI unchanged.
+
+One-shot install (recommended). From the repo root, pick your shell:
+
+```bash
+./bin/kilodev dev-alias zsh  >> ~/.zshrc  && source ~/.zshrc
+./bin/kilodev dev-alias bash >> ~/.bashrc && source ~/.bashrc
+./bin/kilodev dev-alias fish >> ~/.config/fish/config.fish
+```
+
+Windows PowerShell:
+
+```powershell
+./bin/kilodev dev-alias powershell | Out-File -Append $PROFILE
+. $PROFILE
+```
+
+Manual alternatives (equivalent, no CLI invocation needed):
+
+- Unix: add `alias kilodev='/path/to/kilocode/bin/kilodev'` to `~/.zshrc` / `~/.bashrc`, or `fish_add_path /path/to/kilocode/bin`.
+- Windows: add `C:\path\to\kilocode\bin` to PATH (System Environment Variables), or add `function kilodev { & "C:\path\to\kilocode\bin\kilodev.cmd" @args }` to `$PROFILE`.
+
+Then from anywhere:
+
+```bash
+cd ~/some/project
+kilodev                      # opens TUI with project = ~/some/project
+kilodev dev-alias zsh        # prints the shell snippet
+kilodev run --dir "$PWD" "…" # subcommands pass through; use --dir for run/serve
+```
+
 ### Building a "local" binary
 
 To compile a standalone executable:
