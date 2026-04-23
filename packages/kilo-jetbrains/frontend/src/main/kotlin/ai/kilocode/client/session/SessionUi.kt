@@ -5,12 +5,13 @@ import ai.kilocode.client.app.KiloSessionService
 import ai.kilocode.client.app.Workspace
 import ai.kilocode.client.session.model.SessionModelEvent
 import ai.kilocode.client.session.model.SessionState
+import ai.kilocode.client.session.ui.ConnectionPanel
+import ai.kilocode.client.session.ui.EmptySessionPanel
 import ai.kilocode.client.session.ui.LabelPicker
 import ai.kilocode.client.session.ui.PermissionPanel
 import ai.kilocode.client.session.ui.PromptPanel
 import ai.kilocode.client.session.ui.QuestionPanel
 import ai.kilocode.client.session.ui.SessionPanel
-import ai.kilocode.client.session.ui.StatusPanel
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.registry.Registry
@@ -28,7 +29,8 @@ import javax.swing.JPanel
  * Top-level session UI — a thin composition root.
  *
  * Responsibilities:
- * - Creates and wires [SessionController], [SessionPanel], [StatusPanel],
+ * - Creates and wires [SessionController], [SessionPanel], [EmptySessionPanel],
+ *   [ConnectionPanel],
  *   [PromptPanel], [QuestionPanel], [PermissionPanel].
  * - Switches between the status (loading) card and the transcript card via
  *   [SessionControllerEvent.ViewChanged].
@@ -71,7 +73,7 @@ class SessionUi(
 
     // ------ status (loading) panel ------
 
-    private val status = StatusPanel(this, controller)
+    private val status = EmptySessionPanel(this)
 
     // ------ transcript ------
 
@@ -87,6 +89,7 @@ class SessionUi(
 
     private val question = QuestionPanel(controller)
     private val permission = PermissionPanel(controller)
+    private val connection = ConnectionPanel(this, controller)
 
     // ------ prompt ------
 
@@ -105,6 +108,7 @@ class SessionUi(
             isOpaque = false
             add(question)
             add(permission)
+            add(connection)
             add(prompt)
         }
 
