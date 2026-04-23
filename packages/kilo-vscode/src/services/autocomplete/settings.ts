@@ -1,6 +1,6 @@
 import * as vscode from "vscode"
 
-const keys = new Set(["enableAutoTrigger", "enableSmartInlineTaskKeybinding", "enableChatAutocomplete"])
+const keys = new Set(["enableAutoTrigger", "enableSmartInlineTaskKeybinding", "enableChatAutocomplete", "model"])
 
 type Message = {
   type: string
@@ -34,6 +34,7 @@ export function buildAutocompleteSettingsMessage() {
       enableAutoTrigger: config.get<boolean>("enableAutoTrigger", true),
       enableSmartInlineTaskKeybinding: config.get<boolean>("enableSmartInlineTaskKeybinding", false),
       enableChatAutocomplete: config.get<boolean>("enableChatAutocomplete", false),
+      model: config.get<string>("model", "mistralai/codestral-2508"),
     },
   }
 }
