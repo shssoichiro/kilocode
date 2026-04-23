@@ -55,7 +55,11 @@ import { fetchMessagePage, MESSAGE_PAGE_LIMIT } from "./kilo-provider/message-pa
 import { childID } from "./kilo-provider/task-session"
 import { handleNetworkEvent, clearNetworkWaits } from "./kilo-provider/network"
 import { abortSession, parseQueued } from "./kilo-provider/abort"
-import { buildSettingsMessage, routeAutocompleteMessage } from "./services/autocomplete/settings"
+import {
+  buildSettingsMessage,
+  routeAutocompleteMessage,
+  watchAutocompleteConfig,
+} from "./services/autocomplete/settings"
 import * as ModelState from "./kilo-provider/model-state"
 import { handleForkSession } from "./kilo-provider/fork-session"
 import { retryable, backoff, MAX_RETRIES } from "./util/retry"
@@ -559,11 +563,7 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
   private setupWebviewMessageHandler(webview: vscode.Webview): void {
     this.webviewMessageDisposable?.dispose()
     this.configDisposable?.dispose()
-    this.configDisposable = vscode.workspace.onDidChangeConfiguration((e) => {
-      if (e.affectsConfiguration("kilo-code.new.autocomplete")) {
-        this.sendAutocompleteSettings()
-      }
-    })
+    this.configDisposable = watchAutocompleteConfig((msg) => this.postMessage(msg))
     this.webviewMessageDisposable = webview.onDidReceiveMessage(async (message) => {
       // Run interceptor if attached (e.g., AgentManagerProvider worktree logic)
       if (this.onBeforeMessage) {

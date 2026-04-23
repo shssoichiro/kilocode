@@ -38,6 +38,15 @@ export function buildSettingsMessage() {
   }
 }
 
+/** Push autocomplete settings to the webview whenever VS Code config changes. */
+export function watchAutocompleteConfig(post: Post): vscode.Disposable {
+  return vscode.workspace.onDidChangeConfiguration((e) => {
+    if (e.affectsConfiguration("kilo-code.new.autocomplete")) {
+      post(buildSettingsMessage())
+    }
+  })
+}
+
 async function update(key: unknown, value: unknown) {
   if (typeof key !== "string") return false
   if (!keys.has(key)) return false
