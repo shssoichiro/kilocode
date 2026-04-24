@@ -23,7 +23,9 @@ import kotlinx.coroutines.CoroutineScope
 import java.awt.BorderLayout
 import java.awt.CardLayout
 import javax.swing.BoxLayout
+import javax.swing.JLayeredPane
 import javax.swing.JPanel
+import javax.swing.SwingUtilities
 
 /**
  * Top-level session UI — a thin composition root.
@@ -34,6 +36,8 @@ import javax.swing.JPanel
  *   [PromptPanel], [QuestionPanel], [PermissionPanel].
  * - Switches between the status (loading) card and the transcript card via
  *   [SessionControllerEvent.ViewChanged].
+ * - Keeps [ConnectionPanel] on a transparent overlay layer directly above the
+ *   prompt.
  * - Delegates all transcript and dock updates to the panels themselves via
  *   [SessionModelEvent] listeners (no inline rendering logic here).
  * - Scrolls to the bottom on new content.
@@ -99,6 +103,36 @@ class SessionUi(
         onAbort = { controller.abort() },
     )
 
+    private val content = JPanel(BorderLayout())
+
+    private val overlay = object : JPanel(null) {
+        override fun contains(x: Int, y: Int): Boolean {
+            for (child in components) {
+                if (child.isVisible && child.bounds.contains(x, y)) return true
+            }
+            return false
+        }
+    }.apply {
+        isOpaque = false
+    }
+
+    private val root: JLayeredPane = object : JLayeredPane() {
+        override fun doLayout() {
+            content.setBounds(0, 0, width, height)
+            overlay.setBounds(0, 0, width, height)
+
+            content.doLayout()
+            prompt.parent?.doLayout()
+
+            val box = SwingUtilities.convertRectangle(prompt.parent, prompt.bounds, overlay)
+            val h = connection.preferredSize.height
+            connection.setBounds(box.x, maxOf(0, box.y - h), box.width, h)
+            connection.doLayout()
+        }
+
+        override fun getPreferredSize() = content.preferredSize
+    }
+
     init {
         // South area: question dock, permission dock, and prompt stacked vertically.
         // BoxLayout(Y_AXIS) collapses invisible panels to zero height automatically,
@@ -108,7 +142,6 @@ class SessionUi(
             isOpaque = false
             add(question)
             add(permission)
-            add(connection)
             add(prompt)
         }
 
@@ -116,8 +149,17 @@ class SessionUi(
         center.add(scroll, MESSAGES)
         cards.show(center, STATUS)
 
-        add(center, BorderLayout.CENTER)
-        add(south, BorderLayout.SOUTH)
+        content.add(center, BorderLayout.CENTER)
+        content.add(south, BorderLayout.SOUTH)
+
+        overlay.add(connection)
+
+        root.add(content)
+        root.setLayer(content, JLayeredPane.DEFAULT_LAYER)
+        root.add(overlay)
+        root.setLayer(overlay, JLayeredPane.PALETTE_LAYER)
+
+        add(root, BorderLayout.CENTER)
 
         // ------ picker wiring ------
 
@@ -202,12 +244,27 @@ class SessionUi(
                 permission.hidePanel()
             }
         }
+        refresh()
         scrollToBottom()
     }
 
     private fun scrollToBottom() {
         val bar = scroll.verticalScrollBar
         bar.value = bar.maximum
+    }
+
+    private fun refresh() {
+        center.revalidate()
+        center.repaint()
+        content.revalidate()
+        content.repaint()
+        root.revalidate()
+        root.repaint()
+    }
+
+    override fun doLayout() {
+        super.doLayout()
+        root.doLayout()
     }
 
     override fun dispose() {}

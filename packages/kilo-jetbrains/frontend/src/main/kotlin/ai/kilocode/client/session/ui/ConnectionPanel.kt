@@ -26,7 +26,8 @@ class ConnectionPanel(
 
     init {
         Disposer.register(parent, this)
-        isOpaque = false
+        isOpaque = true
+        background = UIUtil.getPanelBackground()
         add(label, BorderLayout.CENTER)
         controller.addListener(this, this)
         render()
