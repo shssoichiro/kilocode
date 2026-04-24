@@ -9,6 +9,7 @@ import { useRoute } from "../../context/route"
 import { RemoteIndicator } from "@/kilocode/remote-tui" // kilocode_change
 import { formatIndexingLabel } from "@/kilocode/indexing-label" // kilocode_change
 import type { IndexingStatusState } from "@kilocode/kilo-indexing/status" // kilocode_change
+import { indexingEnabled } from "@/kilocode/indexing-feature" // kilocode_change
 
 // kilocode_change start
 function indexingTone(state: IndexingStatusState, theme: ReturnType<typeof useTheme>["theme"]) {
@@ -104,7 +105,9 @@ export function Footer() {
                 {mcp()} MCP
               </text>
             </Show>
-            <text fg={indexingTone(indexing().state, theme)}>{indexingText(indexing()).slice(0, 48)}</text>
+            <Show when={indexingEnabled(sync.data.config)}>
+              <text fg={indexingTone(indexing().state, theme)}>{indexingText(indexing()).slice(0, 48)}</text>
+            </Show>
             {/* kilocode_change end */}
             <text fg={theme.textMuted}>/status</text>
           </Match>

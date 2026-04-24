@@ -113,7 +113,7 @@ export type Indexing = z.infer<typeof Indexing>
 const AgentRef = Schema.Any.annotate({ [ZodOverride]: ConfigAgent.Info })
 const PermissionRef = Schema.Any.annotate({ [ZodOverride]: ConfigPermission.Info })
 const LogLevelRef = Schema.Any.annotate({ [ZodOverride]: Log.Level })
-const IndexingRef = Schema.Any.annotate({ [ZodOverride]: KiloIndexingConfig })
+const IndexingRef = Schema.Any.annotate({ [ZodOverride]: KiloIndexingConfig }) // kilocode_change
 
 const PositiveInt = Schema.Number.check(Schema.isInt()).check(Schema.isGreaterThan(0))
 const NonNegativeInt = Schema.Number.check(Schema.isInt()).check(Schema.isGreaterThanOrEqualTo(0))
@@ -258,6 +258,11 @@ const InfoSchema = Schema.Struct({
       disable_paste_summary: Schema.optional(Schema.Boolean),
       batch_tool: Schema.optional(Schema.Boolean).annotate({ description: "Enable the batch tool" }),
       codebase_search: Schema.optional(Schema.Boolean).annotate({ description: "Enable AI-powered codebase search" }), // kilocode_change
+      // kilocode_change start
+      semantic_indexing: Schema.optional(Schema.Boolean).annotate({
+        description: "Enable semantic codebase indexing and the semantic_search tool",
+      }),
+      // kilocode_change end
       // kilocode_change start - enable telemetry by default
       openTelemetry: Schema.Boolean.pipe(Schema.optional, Schema.withDecodingDefault(Effect.succeed(true))).annotate({
         description: "Enable telemetry. Set to false to opt-out.",

@@ -139,35 +139,32 @@ export namespace KiloIndexing {
 
   const cache = new Map<string, Promise<Entry>>()
 
+  const inert = async (current: () => Status): Promise<Entry> => {
+    const publish = async () => {
+      await Bus.publish(Event, { status: current() })
+    }
+
+    await publish()
+    return {
+      current,
+      publish,
+      dispose() {},
+    }
+  }
+
   const boot = async (): Promise<Entry> => {
     const dir = Instance.directory
     const cfg = await Config.get()
     if (!hasIndexingPlugin(cfg.plugin)) {
-      const current = () => missing()
-      const publish = async () => {
-        await Bus.publish(Event, { status: current() })
-      }
+      return inert(() => missing())
+    }
 
-      await publish()
-      return {
-        current,
-        publish,
-        dispose() {},
-      }
+    if (cfg.experimental?.semantic_indexing !== true) {
+      return inert(() => disabledIndexingStatus("Semantic indexing is disabled. Enable it in the Experimental settings."))
     }
 
     if (isWorktreePath(dir)) {
-      const current = () => worktreeDisabled()
-      const publish = async () => {
-        await Bus.publish(Event, { status: current() })
-      }
-
-      await publish()
-      return {
-        current,
-        publish,
-        dispose() {},
-      }
+      return inert(() => worktreeDisabled())
     }
 
     log.info("initializing project indexing", { workspacePath: dir })
