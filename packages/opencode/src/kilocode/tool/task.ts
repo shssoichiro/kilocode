@@ -14,6 +14,7 @@ import z from "zod"
 const ModelState = z
   .object({
     model: z.record(z.string(), z.object({ providerID: ProviderID.zod, modelID: ModelID.zod })).optional(),
+    variant: z.record(z.string(), z.string().optional()).optional(),
   })
   .passthrough()
 
@@ -62,6 +63,11 @@ export namespace KiloTask {
           .catch(() => undefined),
       catch: () => undefined,
     })
-    return state?.model?.[name]
+    const model = state?.model?.[name]
+    if (!model) return undefined
+    return {
+      ...model,
+      variant: state?.variant?.[`${model.providerID}/${model.modelID}`],
+    }
   })
 }

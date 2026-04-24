@@ -119,6 +119,7 @@ export const TaskTool = Tool.define(
           modelID: msg.info.modelID,
           providerID: msg.info.providerID,
         }
+      const variant = saved?.variant ?? (saved ? undefined : next.variant)
       // kilocode_change end
 
       yield* ctx.metadata({
@@ -126,6 +127,7 @@ export const TaskTool = Tool.define(
         metadata: {
           sessionId: nextSession.id,
           model,
+          variant, // kilocode_change
         },
       })
 
@@ -152,6 +154,7 @@ export const TaskTool = Tool.define(
                 modelID: model.modelID,
                 providerID: model.providerID,
               },
+              variant, // kilocode_change
               agent: next.name,
               tools: {
                 ...(canTodo ? {} : { todowrite: false }),
@@ -166,6 +169,7 @@ export const TaskTool = Tool.define(
               metadata: {
                 sessionId: nextSession.id,
                 model,
+                variant, // kilocode_change
               },
               output: [
                 `task_id: ${nextSession.id} (for resuming to continue this task if needed)`,

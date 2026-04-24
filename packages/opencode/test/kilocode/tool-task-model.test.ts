@@ -46,6 +46,9 @@ const cfg = {
   modelID: ModelID.make("config-model"),
 }
 
+const savedVariant = "fast"
+const cfgVariant = "balanced"
+
 const it = testEffect(
   Layer.mergeAll(
     Agent.defaultLayer,
@@ -168,14 +171,16 @@ function run(input: { agent: "pinned" | "worker"; state?: unknown; client?: stri
 
         return {
           prompt: seen?.model,
+          variant: seen?.variant,
           model: result.metadata.model,
+          metadataVariant: result.metadata.variant,
         }
       }),
     {
       config: {
         agent: {
           worker: { mode: "subagent" },
-          pinned: { mode: "subagent", model: "config-provider/config-model" },
+          pinned: { mode: "subagent", model: "config-provider/config-model", variant: cfgVariant },
         },
       },
     },
@@ -186,12 +191,14 @@ describe("tool.task model resolution", () => {
   it.live("saved model beats agent config for pinned", () =>
     run({
       agent: "pinned",
-      state: { model: { pinned: saved } },
+      state: { model: { pinned: saved }, variant: { "saved-provider/saved-model": savedVariant } },
     }).pipe(
       Effect.tap((result) =>
         Effect.sync(() => {
           expect(result.prompt).toEqual(saved)
-          expect(result.model).toEqual(saved)
+          expect(result.variant).toEqual(savedVariant)
+          expect(result.model).toMatchObject({ ...saved, variant: savedVariant })
+          expect(result.metadataVariant).toEqual(savedVariant)
         }),
       ),
     ),
@@ -200,12 +207,46 @@ describe("tool.task model resolution", () => {
   it.live("saved model beats parent for worker", () =>
     run({
       agent: "worker",
+      state: { model: { worker: saved }, variant: { "saved-provider/saved-model": savedVariant } },
+    }).pipe(
+      Effect.tap((result) =>
+        Effect.sync(() => {
+          expect(result.prompt).toEqual(saved)
+          expect(result.variant).toEqual(savedVariant)
+          expect(result.model).toMatchObject({ ...saved, variant: savedVariant })
+          expect(result.metadataVariant).toEqual(savedVariant)
+        }),
+      ),
+    ),
+  )
+
+  it.live("saved model without variant leaves variant undefined", () =>
+    run({
+      agent: "worker",
       state: { model: { worker: saved } },
     }).pipe(
       Effect.tap((result) =>
         Effect.sync(() => {
           expect(result.prompt).toEqual(saved)
+          expect(result.variant).toBeUndefined()
           expect(result.model).toEqual(saved)
+          expect(result.metadataVariant).toBeUndefined()
+        }),
+      ),
+    ),
+  )
+
+  it.live("unrelated saved variant key ignored", () =>
+    run({
+      agent: "worker",
+      state: { model: { worker: saved }, variant: { "other-provider/other-model": savedVariant } },
+    }).pipe(
+      Effect.tap((result) =>
+        Effect.sync(() => {
+          expect(result.prompt).toEqual(saved)
+          expect(result.variant).toBeUndefined()
+          expect(result.model).toEqual(saved)
+          expect(result.metadataVariant).toBeUndefined()
         }),
       ),
     ),
@@ -219,7 +260,9 @@ describe("tool.task model resolution", () => {
       Effect.tap((result) =>
         Effect.sync(() => {
           expect(result.prompt).toEqual(cfg)
+          expect(result.variant).toEqual(cfgVariant)
           expect(result.model).toEqual(cfg)
+          expect(result.metadataVariant).toEqual(cfgVariant)
         }),
       ),
     ),
@@ -232,7 +275,9 @@ describe("tool.task model resolution", () => {
       Effect.tap((result) =>
         Effect.sync(() => {
           expect(result.prompt).toEqual(parent)
+          expect(result.variant).toBeUndefined()
           expect(result.model).toEqual(parent)
+          expect(result.metadataVariant).toBeUndefined()
         }),
       ),
     ),
@@ -273,13 +318,15 @@ describe("tool.task model resolution", () => {
           )
 
           expect(seen?.model).toEqual(cfg)
+          expect(seen?.variant).toEqual(cfgVariant)
           expect(result.metadata.model).toEqual(cfg)
+          expect(result.metadata.variant).toEqual(cfgVariant)
         }),
       {
         config: {
           agent: {
             worker: { mode: "subagent" },
-            pinned: { mode: "subagent", model: "config-provider/config-model" },
+            pinned: { mode: "subagent", model: "config-provider/config-model", variant: cfgVariant },
           },
         },
       },
@@ -290,12 +337,14 @@ describe("tool.task model resolution", () => {
     run({
       agent: "worker",
       client: "vscode",
-      state: { model: { worker: saved } },
+      state: { model: { worker: saved }, variant: { "saved-provider/saved-model": savedVariant } },
     }).pipe(
       Effect.tap((result) =>
         Effect.sync(() => {
           expect(result.prompt).toEqual(parent)
+          expect(result.variant).toBeUndefined()
           expect(result.model).toEqual(parent)
+          expect(result.metadataVariant).toBeUndefined()
         }),
       ),
     ),
