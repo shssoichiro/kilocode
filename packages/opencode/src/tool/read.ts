@@ -134,6 +134,11 @@ export const ReadTool = Tool.define(
 
       if (bytes.length === 0) return false
 
+      // kilocode_change start - UTF-16 BOM: NUL bytes are legitimate, skip the NUL/control-char heuristic
+      if (Encoding.hasUtf16Bom(Buffer.from(bytes.buffer, bytes.byteOffset, bytes.byteLength), bytes.length))
+        return false
+      // kilocode_change end
+
       let nonPrintableCount = 0
       for (let i = 0; i < bytes.length; i++) {
         if (bytes[i] === 0) return true
