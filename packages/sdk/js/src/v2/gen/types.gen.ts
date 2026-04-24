@@ -1996,6 +1996,10 @@ export type Config = {
      */
     codebase_search?: boolean
     /**
+     * Enable semantic codebase indexing and the semantic_search tool
+     */
+    semantic_indexing?: boolean
+    /**
      * Enable telemetry. Set to false to opt-out.
      */
     openTelemetry?: boolean

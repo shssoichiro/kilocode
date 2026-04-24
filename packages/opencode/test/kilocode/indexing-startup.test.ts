@@ -1,4 +1,5 @@
-import { afterEach, describe, expect, test } from "bun:test"
+import { afterEach, describe, expect, spyOn, test } from "bun:test"
+import { CodeIndexManager } from "@kilocode/kilo-indexing/engine"
 import type { Config } from "../../src/config"
 import { AppRuntime } from "../../src/effect/app-runtime"
 import { KiloIndexing } from "../../src/kilocode/indexing"
@@ -12,6 +13,24 @@ Log.init({ print: false })
 
 const cfg: Partial<Config.Info> = {
   plugin: ["@kilocode/kilo-indexing"],
+  experimental: {
+    semantic_indexing: true,
+  },
+  indexing: {
+    enabled: true,
+    provider: "ollama",
+    vectorStore: "lancedb",
+    ollama: {
+      baseUrl: "http://127.0.0.1:1",
+    },
+  },
+}
+
+const off: Partial<Config.Info> = {
+  plugin: ["@kilocode/kilo-indexing"],
+  experimental: {
+    semantic_indexing: false,
+  },
   indexing: {
     enabled: true,
     provider: "ollama",
@@ -70,6 +89,28 @@ describe("indexing startup degradation", () => {
         expect(status.message).toContain("Failed to initialize:")
         expect(await KiloIndexing.available()).toBe(false)
         expect(await KiloIndexing.search("boot failure")).toEqual([])
+      },
+    })
+  })
+
+  test("stays disabled when semantic indexing flag is off", async () => {
+    await using tmp = await tmpdir({ git: true, config: off })
+    process.env["KILO_CONFIG_DIR"] = tmp.path
+    const init = spyOn(CodeIndexManager.prototype, "initialize")
+
+    await Instance.provide({
+      directory: tmp.path,
+      init: () => AppRuntime.runPromise(InstanceBootstrap),
+      fn: async () => {
+        const status = await KiloIndexing.current()
+
+        expect(status).toMatchObject({
+          state: "Disabled",
+          message: "Semantic indexing is disabled. Enable it in the Experimental settings.",
+        })
+        expect(await KiloIndexing.available()).toBe(false)
+        expect(await KiloIndexing.search("flag off")).toEqual([])
+        expect(init).not.toHaveBeenCalled()
       },
     })
   })

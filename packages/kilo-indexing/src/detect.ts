@@ -1,6 +1,3 @@
-import path from "path"
-import { fileURLToPath } from "url"
-
 export const INDEXING_PLUGIN_NAMES = ["kilo-indexing", "@kilocode/kilo-indexing"] as const
 
 // RATIONALE: PluginSpec is string | [string, Record] — accept both forms.
@@ -12,7 +9,7 @@ const pathRx = /^[A-Za-z]:[\\/]/
 export function normalizePluginName(value: string): string {
   if (!value) return ""
   if (value.startsWith("file://")) {
-    return normalizePath(fileURLToPath(value))
+    return normalizePath(fromFileUrl(value))
   }
   if (isPathSpecifier(value)) {
     return normalizePath(value)
@@ -82,5 +79,20 @@ function normalizePath(value: string): string {
   const workspace = parts.findIndex((part, i) => part === "packages" && parts[i + 1] === "kilo-indexing")
   if (workspace >= 0) return "@kilocode/kilo-indexing"
 
-  return path.parse(value).name
+  return stem(value)
+}
+
+function fromFileUrl(value: string): string {
+  const url = new URL(value)
+  const path = decodeURIComponent(url.pathname)
+  if (/^\/[A-Za-z]:\//.test(path)) return path.slice(1)
+  if (url.host) return `//${url.host}${path}`
+  return path
+}
+
+function stem(value: string): string {
+  const part = value.split(/[\\/]+/).filter(Boolean).at(-1) ?? value
+  const dot = part.lastIndexOf(".")
+  if (dot <= 0) return part
+  return part.slice(0, dot)
 }

@@ -34,6 +34,7 @@ import { dict as uiEn } from "@kilocode/kilo-ui/i18n/en"
 import { dict as appEn } from "../i18n/en"
 import { dict as amEn } from "../../agent-manager/i18n/en"
 import { dict as kiloEn } from "@kilocode/kilo-i18n/en"
+import { hasIndexingPlugin } from "@kilocode/kilo-indexing/detect"
 import { resolveTemplate } from "../context/language-utils"
 import type {
   Config,
@@ -42,6 +43,8 @@ import type {
   QuestionRequest,
   SuggestionRequest,
 } from "../types/messages"
+
+type PluginSpec = string | [string, Record<string, unknown>]
 
 // Merged English dictionary (same merge order as the real LanguageProvider)
 const dict: Record<string, string> = { ...appEn, ...amEn, ...uiEn, ...kiloEn }
@@ -265,9 +268,19 @@ interface StoryProvidersProps {
 const ConfigWrapper: ParentComponent<{ config?: Config; onConfigChange?: (config: Config) => void }> = (props) => {
   if (props.config) {
     const [cfg, setCfg] = createSignal(props.config)
+    const features = createMemo(() => {
+      const config = cfg() as Config & {
+        plugin?: readonly PluginSpec[] | null
+      }
+
+      return {
+        indexing: hasIndexingPlugin(config.plugin ?? []) && config.experimental?.semantic_indexing === true,
+      }
+    })
+
     const value = {
       config: createMemo(() => cfg()),
-      features: createMemo(() => ({ indexing: !!cfg().indexing })),
+      features,
       loading: () => false,
       isDirty: () => false,
       saving: () => false,

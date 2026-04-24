@@ -1119,6 +1119,9 @@ export const dict = {
   "settings.experimental.pasteSummary.description": "عدم تلخيص المحتوى الملصق الكبير",
   "settings.experimental.batch.title": "أداة دفعية",
   "settings.experimental.batch.description": "تمكين المعالجة الدفعية لاستدعاءات الأدوات",
+  "settings.experimental.semanticIndexing.title": "Semantic Indexing",
+  "settings.experimental.semanticIndexing.description":
+    "Enable semantic codebase indexing and the semantic_search tool. Requires indexing configuration.",
   "settings.experimental.codebaseSearch.title": "بحث في قاعدة الكود",
   "settings.experimental.codebaseSearch.description": "تمكين البحث بالذكاء الاصطناعي باللغة الطبيعية عبر قاعدة الكود",
   "settings.experimental.continueOnDeny.title": "المتابعة عند الرفض",

@@ -9,6 +9,9 @@ import { tmpdir } from "../fixture/fixture"
 
 const cfg: Partial<Config.Info> = {
   plugin: ["@kilocode/kilo-indexing"],
+  experimental: {
+    semantic_indexing: true,
+  },
   indexing: {
     enabled: true,
     provider: "ollama",

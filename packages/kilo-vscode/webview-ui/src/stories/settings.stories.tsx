@@ -327,6 +327,9 @@ export const IndexingProviderBlurRace: Story = {
   render: () => {
     const [saved, setSaved] = createSignal<Record<string, unknown>>({})
     const cfg: Config = {
+      experimental: {
+        semantic_indexing: true,
+      },
       indexing: {
         provider: "openai",
         openai: { apiKey: "" },

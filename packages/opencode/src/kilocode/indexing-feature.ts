@@ -9,6 +9,7 @@ type PluginSpec = string | [string, Record<string, unknown>]
 
 type ConfigLike = {
   plugin?: readonly PluginSpec[] | null
+  experimental?: { semantic_indexing?: boolean } | null
 }
 
 type Req = {
@@ -20,7 +21,7 @@ type LogLike = {
 }
 
 export function indexingEnabled(config?: ConfigLike | null): boolean {
-  return hasIndexingPlugin(config?.plugin ?? [])
+  return hasIndexingPlugin(config?.plugin ?? []) && config?.experimental?.semantic_indexing === true
 }
 
 export function resolveIndexingPlugin(req: Req, log?: LogLike): string {

@@ -4,6 +4,7 @@ type PluginSpec = string | [string, Record<string, unknown>]
 
 type ConfigLike = {
   plugin?: readonly PluginSpec[] | null
+  experimental?: { semantic_indexing?: boolean } | null
 }
 
 export type Features = {
@@ -12,6 +13,6 @@ export type Features = {
 
 export function configFeatures(config?: ConfigLike | null): Features {
   return {
-    indexing: hasIndexingPlugin(config?.plugin ?? []),
+    indexing: hasIndexingPlugin(config?.plugin ?? []) && config?.experimental?.semantic_indexing === true,
   }
 }
