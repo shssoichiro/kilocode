@@ -100,7 +100,7 @@ This sets the `explore` subagent to always use Haiku regardless of the parent's 
 
 Subagents inherit the model currently active in the primary agent session — the model shown in the selector at the bottom of the chat. To bypass inheritance and pin a specific model for a subagent:
 
-- **Via Settings** — open **Settings → Providers → Model per Mode**, find the subagent, and pick its model.
+- **Via Settings** — open **Settings → Models → Model per Mode**, find the subagent, and pick its model.
 - **Via config file** — edit `kilo.jsonc`:
 
 ```json
