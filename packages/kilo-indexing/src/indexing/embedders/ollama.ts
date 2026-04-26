@@ -1,6 +1,6 @@
 import type { EmbedderInfo, EmbeddingResponse, IEmbedder } from "../interfaces"
 import { getModelQueryPrefix } from "../model-registry"
-import { MAX_ITEM_TOKENS } from "../constants"
+import { MAX_ITEM_TOKENS, OLLAMA_EMBEDDER_REQUEST_TIMEOUT_MS } from "../constants"
 import { withValidationErrorHandling, sanitizeErrorMessage } from "../shared/validation-helpers"
 import { Log } from "../../util/log"
 
@@ -17,10 +17,6 @@ type OllamaModel = {
 type OllamaModelsResult = {
   models?: OllamaModel[]
 }
-
-// RATIONALE: Default timeout for Ollama requests. Ollama runs locally and may
-// need time to load models into memory on first request.
-const DEFAULT_REQUEST_TIMEOUT_MS = 120_000
 
 /**
  * Implements the IEmbedder interface using a local Ollama instance.
@@ -74,7 +70,7 @@ export class CodeIndexOllamaEmbedder implements IEmbedder {
     try {
       // Add timeout to prevent indefinite hanging
       const controller = new AbortController()
-      const timeoutId = setTimeout(() => controller.abort(), DEFAULT_REQUEST_TIMEOUT_MS)
+      const timeoutId = setTimeout(() => controller.abort(), OLLAMA_EMBEDDER_REQUEST_TIMEOUT_MS)
 
       const response = await fetch(url, {
         method: "POST",
@@ -147,7 +143,7 @@ export class CodeIndexOllamaEmbedder implements IEmbedder {
 
         // Add timeout to prevent indefinite hanging
         const controller = new AbortController()
-        const timeoutId = setTimeout(() => controller.abort(), DEFAULT_REQUEST_TIMEOUT_MS)
+        const timeoutId = setTimeout(() => controller.abort(), OLLAMA_EMBEDDER_REQUEST_TIMEOUT_MS)
 
         const modelsResponse = await fetch(modelsUrl, {
           method: "GET",
@@ -198,7 +194,7 @@ export class CodeIndexOllamaEmbedder implements IEmbedder {
 
         // Add timeout for test request too
         const testController = new AbortController()
-        const testTimeoutId = setTimeout(() => testController.abort(), DEFAULT_REQUEST_TIMEOUT_MS)
+        const testTimeoutId = setTimeout(() => testController.abort(), OLLAMA_EMBEDDER_REQUEST_TIMEOUT_MS)
 
         const testResponse = await fetch(testUrl, {
           method: "POST",

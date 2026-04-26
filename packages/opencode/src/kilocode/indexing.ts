@@ -130,6 +130,12 @@ export namespace KiloIndexing {
     dispose(): void
   }
 
+  type Cache = {
+    promise: Promise<Entry>
+    entry?: Entry
+    disposed?: boolean
+  }
+
   export const Event = BusEvent.define(
     "indexing.status",
     z.object({
@@ -137,7 +143,7 @@ export namespace KiloIndexing {
     }),
   )
 
-  const cache = new Map<string, Promise<Entry>>()
+  const cache = new Map<string, Cache>()
 
   const inert = async (current: () => Status): Promise<Entry> => {
     const publish = async () => {
@@ -237,21 +243,35 @@ export namespace KiloIndexing {
   const state = async () => {
     const dir = Instance.directory
     const existing = cache.get(dir)
-    if (existing) return existing
+    if (existing) return existing.promise
 
-    const next = boot().catch((err) => {
-      if (cache.get(dir) === next) cache.delete(dir)
-      throw err
-    })
-    cache.set(dir, next)
-    return next
+    const hit: Cache = {
+      promise: boot()
+        .then((entry) => {
+          if (hit.disposed) {
+            entry.dispose()
+            return entry
+          }
+          hit.entry = entry
+          return entry
+        })
+        .catch((err) => {
+          if (cache.get(dir) === hit) cache.delete(dir)
+          throw err
+        }),
+    }
+    cache.set(dir, hit)
+    return hit.promise
   }
 
   registerDisposer(async (dir) => {
     const hit = cache.get(dir)
     cache.delete(dir)
-    const entry = await hit?.catch(() => undefined)
-    entry?.dispose()
+    if (hit?.entry) {
+      hit.entry.dispose()
+      return
+    }
+    if (hit) hit.disposed = true
   })
 
   export async function init() {
@@ -260,6 +280,12 @@ export namespace KiloIndexing {
 
   export async function current(): Promise<Status> {
     return (await state()).current()
+  }
+
+  export function ready(): boolean {
+    const entry = cache.get(Instance.directory)?.entry
+    if (!entry?.manager) return false
+    return entry.current().state !== "Disabled"
   }
 
   export async function available(): Promise<boolean> {

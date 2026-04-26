@@ -15,7 +15,7 @@ const cfg: Partial<Config.Info> = {
   indexing: {
     enabled: true,
     provider: "ollama",
-    vectorStore: "lancedb",
+    vectorStore: "qdrant",
     ollama: {
       baseUrl: "http://127.0.0.1:1",
     },
@@ -46,6 +46,7 @@ describe("indexing worktree disable", () => {
         expect(status.state).toBe("Disabled")
         expect(status.message).toBe("Indexing is disabled in worktree sessions. Use the main workspace for indexing.")
         expect(await KiloIndexing.available()).toBe(false)
+        expect(KiloIndexing.ready()).toBe(false)
         expect(await KiloIndexing.search("worktree")).toEqual([])
       },
     })
@@ -66,6 +67,7 @@ describe("indexing worktree disable", () => {
         expect(status.state).toBe("Disabled")
         expect(status.message).toBe("Indexing is disabled in worktree sessions. Use the main workspace for indexing.")
         expect(await KiloIndexing.available()).toBe(false)
+        expect(KiloIndexing.ready()).toBe(false)
       },
     })
   })

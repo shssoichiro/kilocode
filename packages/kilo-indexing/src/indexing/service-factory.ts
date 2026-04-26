@@ -20,10 +20,19 @@ import type { ICodeParser, IEmbedder, IFileWatcher, IVectorStore } from "./inter
 import type { CodeIndexConfigManager } from "./config-manager"
 import type { CacheManager } from "./cache-manager"
 import type { IndexingTelemetryMeta, IndexingTelemetryReporter } from "./interfaces/telemetry"
-import { BATCH_SEGMENT_THRESHOLD } from "./constants"
+import {
+  BATCH_SEGMENT_THRESHOLD,
+  OLLAMA_EMBEDDER_REQUEST_TIMEOUT_MS,
+  REMOTE_EMBEDDER_VALIDATION_TIMEOUT_MS,
+} from "./constants"
 import { Log } from "../util/log"
 
 const log = Log.create({ service: "indexing-factory" })
+
+function timeout(provider: string): number {
+  if (provider === "ollama") return OLLAMA_EMBEDDER_REQUEST_TIMEOUT_MS
+  return REMOTE_EMBEDDER_VALIDATION_TIMEOUT_MS
+}
 
 /**
  * Factory class responsible for creating and configuring code indexing service dependencies.
@@ -107,9 +116,26 @@ export class CodeIndexServiceFactory {
   }
 
   public async validateEmbedder(embedder: IEmbedder): Promise<{ valid: boolean; error?: string }> {
+    const ms = timeout(embedder.embedderInfo.name)
+    let timer: ReturnType<typeof setTimeout> | undefined
+    const wait = embedder.validateConfiguration()
+    const fail = new Promise<{ valid: boolean; error?: string }>((resolve) => {
+      timer = setTimeout(
+        () =>
+          resolve({
+            valid: false,
+            error:
+              embedder.embedderInfo.name === "ollama"
+                ? "Connection to embedding service failed (timeout)"
+                : "Connection failed. Please check the endpoint URL and network connectivity.",
+          }),
+        ms,
+      )
+    })
+
     try {
       log.info("validating embedder", { provider: embedder.embedderInfo.name })
-      const result = await embedder.validateConfiguration()
+      const result = await Promise.race([wait, fail])
       if (result.valid) {
         log.info("embedder validation succeeded", { provider: embedder.embedderInfo.name })
       }
@@ -126,6 +152,8 @@ export class CodeIndexServiceFactory {
         valid: false,
         error: err instanceof Error ? err.message : "Configuration validation error",
       }
+    } finally {
+      if (timer) clearTimeout(timer)
     }
   }
 

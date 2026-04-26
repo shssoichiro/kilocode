@@ -1,6 +1,10 @@
 import { describe, test, expect, beforeEach, afterEach, mock } from "bun:test"
 
-import { MAX_ITEM_TOKENS } from "../../../../src/indexing/constants"
+import {
+  MAX_ITEM_TOKENS,
+  REMOTE_EMBEDDER_VALIDATION_MAX_RETRIES,
+  REMOTE_EMBEDDER_VALIDATION_TIMEOUT_MS,
+} from "../../../../src/indexing/constants"
 import { mockEmbeddingsCreate, openAIMockFactory } from "./__helpers__/openai-mock"
 
 mock.module("openai", openAIMockFactory)
@@ -404,10 +408,16 @@ describe("OpenAiEmbedder", () => {
 
       expect(result.valid).toBe(true)
       expect(result.error).toBeUndefined()
-      expect(mockEmbeddingsCreate).toHaveBeenCalledWith({
-        input: ["test"],
-        model: "text-embedding-3-small",
-      })
+      expect(mockEmbeddingsCreate).toHaveBeenCalledWith(
+        {
+          input: ["test"],
+          model: "text-embedding-3-small",
+        },
+        {
+          timeout: REMOTE_EMBEDDER_VALIDATION_TIMEOUT_MS,
+          maxRetries: REMOTE_EMBEDDER_VALIDATION_MAX_RETRIES,
+        },
+      )
     })
 
     test("should fail validation with authentication error", async () => {

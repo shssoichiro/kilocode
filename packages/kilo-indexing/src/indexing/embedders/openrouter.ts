@@ -5,6 +5,8 @@ import {
   MAX_ITEM_TOKENS,
   MAX_BATCH_RETRIES as MAX_RETRIES,
   INITIAL_RETRY_DELAY_MS as INITIAL_DELAY_MS,
+  REMOTE_EMBEDDER_VALIDATION_MAX_RETRIES,
+  REMOTE_EMBEDDER_VALIDATION_TIMEOUT_MS,
 } from "../constants"
 import { getDefaultModelId, getModelQueryPrefix } from "../model-registry"
 import { withValidationErrorHandling, type HttpError, formatEmbeddingError } from "../shared/validation-helpers"
@@ -306,7 +308,10 @@ export class OpenRouterEmbedder implements IEmbedder {
           }
         }
 
-        const response = (await this.embeddingsClient.embeddings.create(requestParams)) as OpenRouterEmbeddingResponse
+        const response = (await this.embeddingsClient.embeddings.create(requestParams, {
+          timeout: REMOTE_EMBEDDER_VALIDATION_TIMEOUT_MS,
+          maxRetries: REMOTE_EMBEDDER_VALIDATION_MAX_RETRIES,
+        })) as OpenRouterEmbeddingResponse
 
         // Check if we got a valid response
         if (!response?.data || response.data.length === 0) {

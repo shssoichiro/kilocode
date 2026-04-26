@@ -46,6 +46,11 @@ export const MAX_PENDING_BATCHES = 20 // Maximum number of batches to accumulate
 export const MAX_MANAGER_RECOVERY_ATTEMPTS = 3
 export const INITIAL_MANAGER_RECOVERY_DELAY_MS = 500
 
+/**Embedder Validation */
+export const REMOTE_EMBEDDER_VALIDATION_TIMEOUT_MS = 15_000
+export const REMOTE_EMBEDDER_VALIDATION_MAX_RETRIES = 0
+export const OLLAMA_EMBEDDER_REQUEST_TIMEOUT_MS = 120_000
+
 /**OpenAI Embedder */
 export const MAX_BATCH_TOKENS = 100000
 export const MAX_ITEM_TOKENS = 8191

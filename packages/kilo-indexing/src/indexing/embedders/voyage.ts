@@ -4,6 +4,7 @@ import {
   MAX_ITEM_TOKENS,
   MAX_BATCH_RETRIES as MAX_RETRIES,
   INITIAL_RETRY_DELAY_MS as INITIAL_DELAY_MS,
+  REMOTE_EMBEDDER_VALIDATION_TIMEOUT_MS,
 } from "../constants"
 import { getModelQueryPrefix } from "../model-registry"
 import { withValidationErrorHandling, formatEmbeddingError, type HttpError } from "../shared/validation-helpers"
@@ -210,6 +211,8 @@ export class VoyageEmbedder implements IEmbedder {
   async validateConfiguration(): Promise<{ valid: boolean; error?: string }> {
     return withValidationErrorHandling(async () => {
       try {
+        const ctl = new AbortController()
+        const timer = setTimeout(() => ctl.abort(), REMOTE_EMBEDDER_VALIDATION_TIMEOUT_MS)
         const response = await fetch(VoyageEmbedder.VOYAGE_BASE_URL, {
           method: "POST",
           headers: {
@@ -220,7 +223,8 @@ export class VoyageEmbedder implements IEmbedder {
             input: ["test"],
             model: this.modelId,
           }),
-        })
+          signal: ctl.signal,
+        }).finally(() => clearTimeout(timer))
 
         if (!response.ok) {
           const errorBody = await response.text().catch(() => "Unknown error")

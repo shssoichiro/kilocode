@@ -5,6 +5,8 @@ import {
   MAX_ITEM_TOKENS,
   MAX_BATCH_RETRIES as MAX_RETRIES,
   INITIAL_RETRY_DELAY_MS as INITIAL_DELAY_MS,
+  REMOTE_EMBEDDER_VALIDATION_MAX_RETRIES,
+  REMOTE_EMBEDDER_VALIDATION_TIMEOUT_MS,
 } from "../constants"
 import { getDefaultModelId, getModelQueryPrefix } from "../model-registry"
 import { withValidationErrorHandling, type HttpError, formatEmbeddingError } from "../shared/validation-helpers"
@@ -188,6 +190,7 @@ export class OpenAICompatibleEmbedder implements IEmbedder {
     url: string,
     batchTexts: string[],
     model: string,
+    signal?: AbortSignal,
   ): Promise<OpenAIEmbeddingResponse> {
     const response = await fetch(url, {
       method: "POST",
@@ -203,6 +206,7 @@ export class OpenAICompatibleEmbedder implements IEmbedder {
         model: model,
         encoding_format: "base64",
       }),
+      signal,
     })
 
     if (!response || !response.ok) {
@@ -345,14 +349,26 @@ export class OpenAICompatibleEmbedder implements IEmbedder {
 
         if (this.isFullUrl) {
           // Test direct HTTP request for full endpoint URLs
-          response = await this.makeDirectEmbeddingRequest(this.baseUrl, testTexts, modelToUse)
+          const ctl = new AbortController()
+          const timer = setTimeout(() => ctl.abort(), REMOTE_EMBEDDER_VALIDATION_TIMEOUT_MS)
+          try {
+            response = await this.makeDirectEmbeddingRequest(this.baseUrl, testTexts, modelToUse, ctl.signal)
+          } finally {
+            clearTimeout(timer)
+          }
         } else {
           // Test using OpenAI SDK for base URLs
-          response = (await this.embeddingsClient.embeddings.create({
-            input: testTexts,
-            model: modelToUse,
-            encoding_format: "base64",
-          })) as OpenAIEmbeddingResponse
+          response = (await this.embeddingsClient.embeddings.create(
+            {
+              input: testTexts,
+              model: modelToUse,
+              encoding_format: "base64",
+            },
+            {
+              timeout: REMOTE_EMBEDDER_VALIDATION_TIMEOUT_MS,
+              maxRetries: REMOTE_EMBEDDER_VALIDATION_MAX_RETRIES,
+            },
+          )) as OpenAIEmbeddingResponse
         }
 
         // Check if we got a valid response

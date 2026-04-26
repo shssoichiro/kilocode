@@ -4,6 +4,10 @@ import { mockEmbeddingsCreate, openAIMockFactory } from "./__helpers__/openai-mo
 mock.module("openai", openAIMockFactory)
 
 import { OpenRouterEmbedder, OPENROUTER_DEFAULT_PROVIDER_NAME } from "../../../../src/indexing/embedders/openrouter"
+import {
+  REMOTE_EMBEDDER_VALIDATION_MAX_RETRIES,
+  REMOTE_EMBEDDER_VALIDATION_TIMEOUT_MS,
+} from "../../../../src/indexing/constants"
 import { getModelDimension, getDefaultModelId } from "../../../../src/indexing/model-registry"
 import { DEFAULT_HEADERS } from "../../../../src/headers"
 
@@ -288,11 +292,17 @@ describe("OpenRouterEmbedder", () => {
 
       expect(result.valid).toBe(true)
       expect(result.error).toBeUndefined()
-      expect(mockEmbeddingsCreate).toHaveBeenCalledWith({
-        input: ["test"],
-        model: defaultModel,
-        encoding_format: "base64",
-      })
+      expect(mockEmbeddingsCreate).toHaveBeenCalledWith(
+        {
+          input: ["test"],
+          model: defaultModel,
+          encoding_format: "base64",
+        },
+        {
+          timeout: REMOTE_EMBEDDER_VALIDATION_TIMEOUT_MS,
+          maxRetries: REMOTE_EMBEDDER_VALIDATION_MAX_RETRIES,
+        },
+      )
     })
 
     test("should handle validation failure", async () => {
@@ -332,16 +342,22 @@ describe("OpenRouterEmbedder", () => {
 
       expect(result.valid).toBe(true)
       expect(result.error).toBeUndefined()
-      expect(mockEmbeddingsCreate).toHaveBeenCalledWith({
-        input: ["test"],
-        model: defaultModel,
-        encoding_format: "base64",
-        provider: {
-          order: [specificProvider],
-          only: [specificProvider],
-          allow_fallbacks: false,
+      expect(mockEmbeddingsCreate).toHaveBeenCalledWith(
+        {
+          input: ["test"],
+          model: defaultModel,
+          encoding_format: "base64",
+          provider: {
+            order: [specificProvider],
+            only: [specificProvider],
+            allow_fallbacks: false,
+          },
         },
-      })
+        {
+          timeout: REMOTE_EMBEDDER_VALIDATION_TIMEOUT_MS,
+          maxRetries: REMOTE_EMBEDDER_VALIDATION_MAX_RETRIES,
+        },
+      )
     })
 
     test("should include dimensions in validation when configured", async () => {
@@ -368,12 +384,18 @@ describe("OpenRouterEmbedder", () => {
 
       expect(result.valid).toBe(true)
       expect(result.error).toBeUndefined()
-      expect(mockEmbeddingsCreate).toHaveBeenCalledWith({
-        input: ["test"],
-        model: defaultModel,
-        encoding_format: "base64",
-        dimensions: 1024,
-      })
+      expect(mockEmbeddingsCreate).toHaveBeenCalledWith(
+        {
+          input: ["test"],
+          model: defaultModel,
+          encoding_format: "base64",
+          dimensions: 1024,
+        },
+        {
+          timeout: REMOTE_EMBEDDER_VALIDATION_TIMEOUT_MS,
+          maxRetries: REMOTE_EMBEDDER_VALIDATION_MAX_RETRIES,
+        },
+      )
     })
   })
 

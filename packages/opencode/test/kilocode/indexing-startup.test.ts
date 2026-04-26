@@ -19,7 +19,7 @@ const cfg: Partial<Config.Info> = {
   indexing: {
     enabled: true,
     provider: "ollama",
-    vectorStore: "lancedb",
+    vectorStore: "qdrant",
     ollama: {
       baseUrl: "http://127.0.0.1:1",
     },
@@ -34,7 +34,7 @@ const off: Partial<Config.Info> = {
   indexing: {
     enabled: true,
     provider: "ollama",
-    vectorStore: "lancedb",
+    vectorStore: "qdrant",
     ollama: {
       baseUrl: "http://127.0.0.1:1",
     },
@@ -88,9 +88,32 @@ describe("indexing startup degradation", () => {
         expect(status.state).toBe("Error")
         expect(status.message).toContain("Failed to initialize:")
         expect(await KiloIndexing.available()).toBe(false)
+        expect(KiloIndexing.ready()).toBe(false)
         expect(await KiloIndexing.search("boot failure")).toEqual([])
       },
     })
+  })
+
+  test("reports not ready while initialization is in flight", async () => {
+    await using tmp = await tmpdir({ git: true, config: cfg })
+    process.env["KILO_CONFIG_DIR"] = tmp.path
+    const init = spyOn(CodeIndexManager.prototype, "initialize").mockImplementation(() => new Promise(() => {}))
+
+    try {
+      await Instance.provide({
+        directory: tmp.path,
+        init: () => AppRuntime.runPromise(InstanceBootstrap),
+        fn: async () => {
+          void KiloIndexing.init()
+          await new Promise((resolve) => setTimeout(resolve, 0))
+
+          expect(init).toHaveBeenCalled()
+          expect(KiloIndexing.ready()).toBe(false)
+        },
+      })
+    } finally {
+      init.mockRestore()
+    }
   })
 
   test("stays disabled when semantic indexing flag is off", async () => {
@@ -109,6 +132,7 @@ describe("indexing startup degradation", () => {
           message: "Semantic indexing is disabled. Enable it in the Experimental settings.",
         })
         expect(await KiloIndexing.available()).toBe(false)
+        expect(KiloIndexing.ready()).toBe(false)
         expect(await KiloIndexing.search("flag off")).toEqual([])
         expect(init).not.toHaveBeenCalled()
       },
