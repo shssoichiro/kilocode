@@ -299,19 +299,6 @@ export const ChatView: Component<ChatViewProps> = (props) => {
             </Tooltip>
           </div>
         </Show>
-        <div class="session-agent-manager-slot">
-          <Tooltip value={language.t("sidebar.session.agentManager.tooltip")} placement="top">
-            <Button
-              variant="secondary"
-              size="small"
-              class="session-agent-manager"
-              onClick={openAgentManager}
-              aria-label={language.t("sidebar.session.openAgentManager")}
-            >
-              <Icon name="organization" size="small" />
-            </Button>
-          </Tooltip>
-        </div>
       </div>
     </div>
   )

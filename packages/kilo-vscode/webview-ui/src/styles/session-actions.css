@@ -132,8 +132,8 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 20px;
-  padding: 0 6px;
+  min-width: 12px;
+  padding: 0 3px;
   border: none;
   border-radius: 0 var(--session-action-radius) var(--session-action-radius) 0;
   background: transparent;
@@ -283,37 +283,6 @@
   opacity: 0.7;
 }
 
-.session-agent-manager-slot {
-  flex: 0 0 auto;
-  margin-left: auto;
-  min-width: auto;
-  overflow: visible;
-}
-
-.session-agent-manager-slot > [data-component="tooltip-trigger"] {
-  display: flex;
-  flex: 0 0 auto;
-}
-
-.session-agent-manager {
-  width: 24px;
-  padding: 0;
-  gap: 0;
-  flex: 0 0 auto;
-  border-radius: var(--session-action-radius);
-  color: var(--vscode-descriptionForeground);
-  background: transparent;
-  border: none;
-  box-shadow: none;
-}
-
-.session-agent-manager:hover:not(:disabled),
-.session-agent-manager:focus-visible:not(:disabled),
-.session-agent-manager:active:not(:disabled) {
-  background: var(--surface-interactive-hover, var(--vscode-list-hoverBackground));
-  color: var(--vscode-foreground);
-}
-
 /* Diff stats badge styles retained for the inline move button stats */
 .session-diff-badge {
   display: flex;
@@ -359,7 +328,7 @@
 /* Collapse diff stats to icon-only when truly narrow */
 @container (max-width: 300px) {
   .session-actions-row {
-    gap: 6px;
+    gap: 4px;
   }
 
   .session-actions-row > *,
@@ -367,27 +336,22 @@
     flex-basis: auto;
   }
 
-  .session-agent-manager-slot {
-    margin-left: 0;
+  .session-move-action {
+    padding-right: 5px !important;
+  }
+
+  .session-move-changes {
+    gap: 2px;
+    padding-left: 5px !important;
+    padding-right: 5px !important;
   }
 
   .session-diff-add,
   .session-diff-del {
-    display: none;
-  }
-
-  .session-move-changes {
     position: relative;
   }
 
-  .session-move-changes--has-changes [data-component="icon"]::after {
-    content: "";
-    position: absolute;
-    top: -2px;
-    right: -2px;
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-    background: #34d399;
+  .session-move-label {
+    max-width: 116px;
   }
 }
