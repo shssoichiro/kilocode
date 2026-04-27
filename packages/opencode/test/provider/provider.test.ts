@@ -2485,10 +2485,12 @@ test("plugin config providers persist after instance dispose", async () => {
   expect(first[ProviderID.make("demo")]).toBeDefined()
   expect(first[ProviderID.make("demo")].models[ModelID.make("chat")]).toBeDefined()
 
+  // kilocode_change start
   await Instance.provide({
     directory: tmp.path,
     fn: () => Instance.dispose(),
   })
+  // kilocode_change end
 
   const second = await Instance.provide({
     directory: tmp.path,
