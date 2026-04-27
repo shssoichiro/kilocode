@@ -1,5 +1,4 @@
 import type { Argv } from "yargs"
-import type { MessageV2 } from "../../session/message-v2" // kilocode_change
 import { cmd } from "./cmd"
 import { Session } from "../../session"
 import { bootstrap } from "../bootstrap"
@@ -195,13 +194,8 @@ export async function aggregateSessionStats(days?: number, projectFilter?: strin
       for (const message of messages) {
         if (message.info.role === "assistant") {
           // kilocode_change start - count propagated subagent cost once but keep child model stats (#6321)
-          const cost = (() => {
-            const parts = message.parts.filter(
-              (part: MessageV2.Part): part is MessageV2.StepFinishPart => part.type === "step-finish",
-            )
-            if (parts.length === 0) return message.info.cost || 0
-            return parts.reduce((sum: number, part: MessageV2.StepFinishPart) => sum + part.cost, 0)
-          })()
+          const parts = message.parts.filter((part) => part.type === "step-finish")
+          const cost = parts.length ? parts.reduce((sum, part) => sum + part.cost, 0) : message.info.cost || 0
           if (!session.parentID) sessionCost += message.info.cost || 0
           // kilocode_change end
 
