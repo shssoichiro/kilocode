@@ -22,6 +22,10 @@ This plugin is a split-mode JetBrains plugin. UI code belongs in `frontend` unle
 - Avoid hardcoded dimensions. Prefer layout semantics, component defaults, DSL sizing helpers, and `JBUI` utilities.
 - Do not add decorative helper functions, wrappers, or defensive UI code unless they materially improve clarity or correctness.
 - Prefer IntelliJ platform components and theme-aware APIs.
+- Do not use hardcoded runtime colors in generated UI examples or implementation code.
+- Derive UI colors from semantic IntelliJ theme APIs such as `UIUtil`, `JBUI.CurrentTheme`, `NamedColorUtil`, `JBColor.namedColor`, or `JBColor.lazy`.
+- Do not use hardcoded font sizes or font families in generated UI examples or implementation code.
+- Use component defaults, `JBFont`, `RelativeFont`, or existing component fonts for typography.
 - Put user-visible strings in `*.properties` files.
 
 ## Decision Tree
@@ -195,14 +199,14 @@ Key component examples:
 
 ```kotlin
 panel {
-    var color = "grey"
+    var mode = "auto"
 
     buttonsGroup {
-        row("Color:") {
-            radioButton("White", "white")
-            radioButton("Grey", "grey")
+        row("Mode:") {
+            radioButton("Automatic", "auto")
+            radioButton("Manual", "manual")
         }
-    }.bind({ color }, { color = it })
+    }.bind({ mode }, { mode = it })
 
     row("Slider:") {
         slider(0, 10, 1, 5)
@@ -524,6 +528,104 @@ Preferred manual Swing rules:
 - Keep custom components small and focused.
 - For painting, use theme-aware colors and `JBUI.scale(...)` for pixel values.
 
+## Platform Spacing and Insets
+
+Use semantic spacing APIs before inventing numbers. Do not copy fallback values from IntelliJ source into generated UI code; those values are defaults behind theme keys and may change by UI theme, New UI, OS, or IDE version.
+
+| Need | Preferred source |
+| --- | --- |
+| Dialogs, forms, settings | Kotlin UI DSL row/group/indent/gap APIs |
+| Component gaps in Kotlin UI DSL | `RightGap.SMALL`, `RightGap.COLUMNS`, `TopGap.MEDIUM`, `BottomGap.MEDIUM`, `.customize(UnscaledGaps(...))` as a last resort |
+| Manual Swing empty padding | `JBUI.Borders.empty(...)` |
+| Manual Swing insets | `JBUI.insets(...)`, `JBUI.emptyInsets()`, `JBUI.insetsTop(...)`, `JBUI.insetsLeft(...)`, `JBUI.insetsBottom(...)`, `JBUI.insetsRight(...)` |
+| Manual Swing dimensions | `JBUI.size(...)`, `JBDimension`, `JBUI.scale(...)` |
+| Side separators | `JBUI.Borders.customLineTop(...)`, `customLineBottom(...)`, `customLineLeft(...)`, `customLineRight(...)` |
+| Composed borders | `JBUI.Borders.compound(...)`, `JBUI.Borders.merge(...)` |
+| Simple `BorderLayout` panels | `JBUI.Panels.simplePanel(...)`, `BorderLayoutPanel` |
+| Simple vertical custom Swing groups | `VerticalLayout` |
+| Fluent platform panels | `JBPanel.withBorder(...)`, `.andTransparent()`, `.andOpaque()`, `.withBackground(...)` |
+
+Use `JBUI.CurrentTheme` for context-specific spacing and dimensions:
+
+| UI area | Preferred source |
+| --- | --- |
+| Action list rows | `JBUI.CurrentTheme.ActionsList.cellPadding()` |
+| Action icon/text gaps | `JBUI.CurrentTheme.ActionsList.elementIconGap()` |
+| Action mnemonic gaps | `JBUI.CurrentTheme.ActionsList.mnemonicIconGap()` / `mnemonicInsets()` |
+| Popup selection interior | `JBUI.CurrentTheme.Popup.Selection.innerInsets()` |
+| Popup separators | `JBUI.CurrentTheme.Popup.separatorInsets()` / `separatorLabelInsets()` |
+| Popup header/search field | `JBUI.CurrentTheme.Popup.headerInsets()`, `searchFieldBorderInsets()`, `searchFieldInputInsets()` |
+| Complex popup headers | `JBUI.CurrentTheme.ComplexPopup.headerInsets()` |
+| Complex popup text fields | `JBUI.CurrentTheme.ComplexPopup.textFieldBorderInsets()` / `textFieldInputInsets()` |
+| Search Everywhere / big popup header | `JBUI.CurrentTheme.BigPopup.headerBorder()` / `headerToolbarInsets()` / `tabInsets()` |
+| Popup advertiser/footer | `JBUI.CurrentTheme.Advertiser.border()` |
+| Toolbar buttons | `JBUI.CurrentTheme.Toolbar.toolbarButtonInsets()` / `mainToolbarButtonInsets()` |
+| Toolbar containers | `JBUI.CurrentTheme.Toolbar.horizontalToolbarInsets()` / `verticalToolbarInsets()` |
+| Tool-window headers | `JBUI.CurrentTheme.ToolWindow.headerLabelLeftRightInsets()` / `headerToolbarLeftRightInsets()` / `headerTabLeftRightInsets()` |
+| Lists | `JBUI.CurrentTheme.List.rowHeight()` |
+| Trees | `JBUI.CurrentTheme.Tree.rowHeight()` |
+| VCS log rows | `JBUI.CurrentTheme.VersionControl.Log.rowHeight()` / `verticalPadding()` |
+| Help tooltips | `JBUI.CurrentTheme.HelpTooltip.defaultTextBorderInsets()` / `smallTextBorderInsets()` |
+| Navigation bar items | `JBUI.CurrentTheme.NavBar.itemInsets()` |
+
+When using Kotlin UI DSL, prefer DSL semantics over manual padding:
+
+```kotlin
+panel {
+    group(KiloBundle.message("settings.section")) {
+        row(KiloBundle.message("settings.name")) {
+            textField()
+                .align(AlignX.FILL)
+                .resizableColumn()
+        }
+        indent {
+            row { checkBox(KiloBundle.message("settings.enabled")) }
+        }
+    }
+}
+```
+
+When manual Swing is necessary, get padding from platform utilities:
+
+```kotlin
+val panel = JBUI.Panels.simplePanel(content)
+    .withBorder(JBUI.Borders.empty(JBUI.CurrentTheme.Popup.headerInsets()))
+```
+
+For row heights, prefer platform row height APIs over fixed heights:
+
+```kotlin
+component.preferredSize = JBDimension(0, JBUI.CurrentTheme.Tree.rowHeight())
+```
+
+## Generic Platform Utilities
+
+Use existing platform utility classes instead of hand-rolled labels, renderers, borders, colors, fonts, and validation behavior.
+
+| Need | Preferred API |
+| --- | --- |
+| Concise border layout | `BorderLayoutPanel`, `JBUI.Panels.simplePanel(...)` |
+| Platform panel helpers | `JBPanel.withBorder(...)`, `.andTransparent()`, `.andOpaque()` |
+| Platform label behavior | `JBLabel` |
+| Context help | `ContextHelpLabel` |
+| Links | `HyperlinkLabel`, `LinkLabel`, Kotlin UI DSL `link(...)` / `browserLink(...)` |
+| Error/validation label in legacy UI | `ErrorLabel` only when an inline validation component is required and DSL validation is not available |
+| High-performance rich fragments | `SimpleColoredComponent` |
+| List renderers | `ColoredListCellRenderer`, Kotlin `listCellRenderer` / `textListCellRenderer` / `LcrRow` |
+| Tree renderers | `ColoredTreeCellRenderer` |
+| Renderer text styles | `SimpleTextAttributes` |
+| Editable list toolbar | `ToolbarDecorator` |
+| Platform list | `JBList` |
+| Platform tree | `Tree` |
+
+For renderer text, prefer `SimpleTextAttributes` over direct color/font mutation:
+
+```kotlin
+append(text, SimpleTextAttributes.ERROR_ATTRIBUTES)
+append(detail, SimpleTextAttributes.GRAYED_ATTRIBUTES)
+append(link, SimpleTextAttributes.LINK_ATTRIBUTES)
+```
+
 ## Tool Windows
 
 - Register declaratively in module XML via `com.intellij.toolWindow` extension point.
@@ -560,7 +662,7 @@ Always use IntelliJ platform components instead of raw Swing where an equivalent
 | `JSplitPane` | `JBSplitter` | `com.intellij.ui` |
 | `JTabbedPane` | `JBTabs` | `com.intellij.ui.tabs` |
 | `JCheckBox` | `JBCheckBox` | `com.intellij.ui.components` |
-| `Color` | `JBColor` | `com.intellij.ui` |
+| Raw runtime colors | `UIUtil`, `JBUI.CurrentTheme`, `NamedColorUtil`, `JBColor.namedColor`, `JBColor.lazy` | `com.intellij.util.ui`, `com.intellij.ui` |
 | `EmptyBorder` | `JBUI.Borders.empty()` | `com.intellij.util.ui` |
 | Hardcoded pixel sizes | `JBUI.scale(px)` | `com.intellij.util.ui` |
 
@@ -583,13 +685,109 @@ Inspection `Plugin DevKit | Code | Undesirable class usage` highlights raw Swing
 - For single-line overflow/ellipsis, use `SwingTextTrimmer`. Do not manually truncate strings.
 - Put all user-visible strings in `*.properties` files. HTML markup in values is acceptable.
 
-## Colors and Theming
+## Theme-Derived Colors
 
-- Never use `java.awt.Color` directly.
-- Use `JBColor(lightColor, darkColor)` or `JBColor.namedColor("key", fallback)` for theme-aware colors.
-- For lazy color retrieval, such as in painting, use `JBColor.lazy { UIManager.getColor("key") }`.
-- Check current theme with `JBColor.isBright()`.
-- Use generic UI colors such as `UIUtil.getContextHelpForeground()`, `UIUtil.getLabelForeground()`, and `UIUtil.getPanelBackground()`.
+Do not hardcode runtime colors. IntelliJ UI colors must come from the current theme, component state, editor color scheme, or a centralized semantic named color key.
+
+Prefer semantic helpers for common UI roles:
+
+| Need | Preferred API |
+| --- | --- |
+| Ordinary label text | `UIUtil.getLabelForeground()` |
+| Secondary/help text | `UIUtil.getContextHelpForeground()` |
+| Info label text | `UIUtil.getLabelInfoForeground()` |
+| Success label text | `UIUtil.getLabelSuccessForeground()` |
+| Error label text | `UIUtil.getErrorForeground()` |
+| Warning label text | `JBUI.CurrentTheme.Label.warningForeground()` |
+| Generic label foreground by state | `JBUI.CurrentTheme.Label.foreground(selected)` / `disabledForeground(selected)` |
+| Inactive secondary text | `NamedColorUtil.getInactiveTextColor()` |
+| Bounds and standard border color | `NamedColorUtil.getBoundsColor()` / `JBColor.border()` |
+| Tooltips | `UIUtil.getToolTipForeground()` / `getToolTipBackground()` / `JBUI.CurrentTheme.Tooltip.*` |
+| Links | `JBUI.CurrentTheme.Link.Foreground.ENABLED` / `HOVERED` / `PRESSED` / `VISITED` / `DISABLED` / `SECONDARY` |
+| List renderer text/background | `UIUtil.getListForeground(selected, focused)` / `UIUtil.getListBackground(selected, focused)` |
+| Tree renderer text/background | `UIUtil.getTreeForeground(selected, focused)` / `UIUtil.getTreeBackground(selected, focused)` |
+| Non-selected tree content | `UIUtil.getTreeForeground()` / `UIUtil.getTreeBackground()` |
+
+Prefer `JBUI.CurrentTheme` for component-area colors and borders:
+
+| Need | Preferred API |
+| --- | --- |
+| Popup background | `JBUI.CurrentTheme.Popup.BACKGROUND` |
+| Complex popup header | `JBUI.CurrentTheme.ComplexPopup.HEADER_BACKGROUND` |
+| Separators | `JBUI.CurrentTheme.CustomFrameDecorations.separatorForeground()` |
+| Advertiser/footer surfaces | `JBUI.CurrentTheme.Advertiser.foreground()` / `background()` / `border()` |
+| Links | `JBUI.CurrentTheme.Link.Foreground.ENABLED` |
+| Tree selection state | `JBUI.CurrentTheme.Tree.foreground(...)` and selection helpers |
+| Validation errors | `JBUI.CurrentTheme.Validator.errorBorderColor()` / `errorBackgroundColor()` |
+| Validation warnings | `JBUI.CurrentTheme.Validator.warningBorderColor()` / `warningBackgroundColor()` |
+| Focus error/warning outlines | `JBUI.CurrentTheme.Focus.errorColor(active)` / `warningColor(active)` |
+| Banner-like surfaces | `JBUI.CurrentTheme.Banner.*` |
+| Notification tool-window surfaces | `JBUI.CurrentTheme.NotificationError.*`, `NotificationWarning.*`, `NotificationInfo.*` |
+| Icon badges | `JBUI.CurrentTheme.IconBadge.*` |
+
+Use `JBColor.lazy { ... }` for colors that depend on runtime state or the active editor color scheme:
+
+```kotlin
+val bg = JBColor.lazy { EditorColorsManager.getInstance().globalScheme.defaultBackground }
+```
+
+Use `JBColor.namedColor("Some.Semantic.Key", fallback)` only when defining or consuming a semantic color key. Prefer a fallback from an existing theme API over numeric RGB values in examples.
+
+For HTML/CSS snippets, compute the color from a theme API and convert it with `ColorUtil.toHtmlColor(...)`. Do not write hardcoded CSS color literals.
+
+```kotlin
+val fg = ColorUtil.toHtmlColor(UIUtil.getContextHelpForeground())
+val html = HtmlChunk.span("color: $fg").addText(text)
+```
+
+Recommended examples:
+
+```kotlin
+label.applyToComponent {
+    foreground = UIUtil.getContextHelpForeground()
+    font = JBFont.medium()
+}
+```
+
+```kotlin
+foreground = if (selected) {
+    UIUtil.getTreeForeground(true, hasFocus)
+} else {
+    UIUtil.getContextHelpForeground()
+}
+```
+
+Avoid inline `Color(...)`, numeric `JBColor(...)`, `Gray.xNN`, `JBColor.GRAY`, and hex color literals in runtime UI code. The exception is a centralized semantic color definition with a named color key when no existing platform key exists.
+
+## Theme-Derived Fonts
+
+Do not hardcode font sizes or font families. IntelliJ fonts must come from component defaults, platform typography helpers, or existing component fonts.
+
+- Prefer component default fonts when no style change is needed.
+- Use `JBFont.h1()`, `JBFont.h2()`, `JBFont.h3()`, and `JBFont.h4()` for headings.
+- Use `.asBold()`, `.asItalic()`, and `.asPlain()` for style changes on `JBFont` values.
+- Use `JBFont.regular()`, `JBFont.medium()`, and `JBFont.small()` for regular and secondary text.
+- Use `UIUtil.getLabelFont(UIUtil.FontSize.SMALL)` / `MINI` only when an API expects a raw `Font` and `JBFont` / `RelativeFont` is not a good fit.
+- Use `RelativeFont` when adjusting an existing component font relatively.
+- Use `RelativeFont.fromResource(...)` for theme-configurable font offsets when matching platform component patterns.
+- Use `JBUI.Fonts.smallFont()` only when matching an existing platform component pattern that expects it.
+- If editor-like text needs editor typography, derive it from the editor color scheme or existing editor component instead of hardcoding a font.
+
+For errors, grayed text, shortcuts, and links in renderers, prefer `SimpleTextAttributes.ERROR_ATTRIBUTES`, `GRAYED_ATTRIBUTES`, `SHORTCUT_ATTRIBUTES`, and `LINK_ATTRIBUTES` rather than manually selecting colors and styles.
+
+Recommended examples:
+
+```kotlin
+label(title).applyToComponent {
+    font = JBFont.h3().asBold()
+}
+```
+
+```kotlin
+RelativeFont.BOLD.install(label)
+```
+
+Avoid `Font("...")`, raw font sizes, and `deriveFont(14f)` style examples.
 
 ## Borders, Insets, and Spacing
 
@@ -597,6 +795,36 @@ Inspection `Plugin DevKit | Code | Undesirable class usage` highlights raw Swing
 - Use `JBUI.scale(int)` for any pixel dimension to ensure proper HiDPI scaling.
 - Prefer Kotlin UI DSL gaps and row layout semantics over manually assigning borders or insets.
 - Do not use `EmptyBorder`, raw `Insets`, or raw `Dimension` unless there is no platform alternative and the reason is obvious.
+
+## Validation and Error UI
+
+Prefer built-in validation mechanisms over custom error rendering.
+
+- For Kotlin UI DSL, use `validationOnInput`, `validationOnApply`, `validationInfo`, `errorOnApply`, and `addValidationRule` on cells.
+- For DSL dialogs and settings panels, call `DialogPanel.registerValidators(disposable)` when input validation should run continuously.
+- Call `DialogPanel.validateAll()` before `apply()` when submitting a DSL panel manually.
+- In `DialogWrapper`, use `doValidate()` and return `ValidationInfo(message, component)` for errors.
+- Use `ValidationInfo.asWarning()` for warnings and `withOKEnabled()` when a warning should not block submission.
+- For hand-built Swing forms, use `ComponentValidator` with `withValidator`, `withFocusValidator`, and `andRegisterOnDocumentListener` instead of custom tooltip/error border logic.
+- If custom validation painting is unavoidable, use `JBUI.CurrentTheme.Validator.*` and `JBUI.CurrentTheme.Focus.*` colors.
+
+Kotlin UI DSL example:
+
+```kotlin
+textField()
+    .validationOnInput {
+        if (it.text.isBlank()) error(KiloBundle.message("settings.name.required")) else null
+    }
+```
+
+Dialog validation example:
+
+```kotlin
+override fun doValidate(): ValidationInfo? {
+    if (field.text.isBlank()) return ValidationInfo(KiloBundle.message("settings.name.required"), field)
+    return null
+}
+```
 
 ## Icons
 
@@ -608,7 +836,7 @@ Inspection `Plugin DevKit | Code | Undesirable class usage` highlights raw Swing
 - Dark variants: `icon.svg` + `icon_dark.svg`.
 - HiDPI variants: `icon@2x.svg` + `icon@2x_dark.svg`.
 - New UI support: place New UI icons in `expui/`, create `*IconMappings.json`, register via `com.intellij.iconMapper` extension point.
-- New UI icon colors: light `#6C707E`, dark `#CED0D6`.
+- For SVG asset palette values, follow the IntelliJ icon asset guidelines. Do not copy guideline color literals into runtime Swing UI code.
 
 ## Notifications
 
@@ -643,6 +871,9 @@ Review generated UI code and remove:
 - Explicit default property assignments such as unnecessary `isOpaque = false`
 - Unnecessary `preferredSize`, `minimumSize`, or `maximumSize`
 - Raw `Dimension`, `Insets`, `EmptyBorder`, or `Color`
+- Inline runtime colors such as `Color(...)`, numeric `JBColor(...)`, `Gray.xNN`, `JBColor.GRAY`, or hex color literals
+- Raw CSS color literals; `ColorUtil.toHtmlColor(themeColor)` is allowed because the source color is theme-derived
+- Hardcoded font families, raw font sizes, or numeric-size `deriveFont(...)` calls
 - Raw Swing components where IntelliJ replacements exist
 - Manual layout code that Kotlin UI DSL can express cleanly
 - Hardcoded spacing that should be a DSL gap, row gap, or `JBUI` value
