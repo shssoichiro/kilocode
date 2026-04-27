@@ -43,7 +43,7 @@ import type { WebSearchTool } from "@/tool/websearch"
 import type { TaskTool } from "@/tool/task"
 import type { QuestionTool } from "@/tool/question"
 import type { SkillTool } from "@/tool/skill"
-import type { SemanticSearchTool } from "@/tool/semantic_search.ts" // kilocode_change
+import type { SemanticSearchTool } from "@/kilocode/tool/semantic-search" // kilocode_change
 import { useKeyboard, useRenderer, useTerminalDimensions, type JSX } from "@opentui/solid"
 import { useSDK } from "@tui/context/sdk"
 import { useCommandDialog } from "@tui/component/dialog-command"

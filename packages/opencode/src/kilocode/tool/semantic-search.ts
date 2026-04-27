@@ -1,12 +1,11 @@
-// kilocode_change - new file
 import z from "zod"
 import { Effect } from "effect"
 import path from "path"
-import * as Tool from "./tool"
+import * as Tool from "@/tool/tool"
 import { KiloIndexing } from "@/kilocode/indexing"
 import { Instance } from "@/project/instance"
 
-import DESCRIPTION from "./semantic_search.txt"
+import DESCRIPTION from "./semantic-search.txt"
 
 const Parameters = z.object({
   query: z.string().describe("The search query, expressed in natural language."),

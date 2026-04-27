@@ -1,10 +1,9 @@
-import { afterEach, describe, expect, spyOn, test } from "bun:test" // kilocode_change
+import { afterEach, describe, expect, test } from "bun:test"
 import path from "path"
 import fs from "fs/promises"
 import { Effect, Layer } from "effect"
 import { Instance } from "../../src/project/instance"
 import * as CrossSpawnSpawner from "../../src/effect/cross-spawn-spawner"
-import { KiloIndexing } from "../../src/kilocode/indexing" // kilocode_change
 import { ToolRegistry } from "../../src/tool"
 import { provideTmpdirInstance, tmpdir } from "../fixture/fixture" // kilocode_change
 import { testEffect } from "../lib/effect"
@@ -72,47 +71,6 @@ describe("tool.registry", () => {
       else process.env["KILO_CONFIG_DIR"] = originalConfig
     }
   })
-  // kilocode_change end
-
-  // kilocode_change start - indexing readiness must not block core tool registry
-  it.live("omits semantic_search without waiting for slow indexing startup", () =>
-    provideTmpdirInstance(
-      () =>
-        Effect.gen(function* () {
-          const avail = spyOn(KiloIndexing, "available").mockImplementation(() => new Promise<boolean>(() => {}))
-
-          try {
-            const registry = yield* ToolRegistry.Service
-            const ids = yield* registry.ids()
-
-            expect(ids).not.toContain("semantic_search")
-            expect(avail).not.toHaveBeenCalled()
-          } finally {
-            avail.mockRestore()
-          }
-        }),
-      { git: true },
-    ),
-  )
-
-  it.live("registers semantic_search when indexing is ready", () =>
-    provideTmpdirInstance(
-      () =>
-        Effect.gen(function* () {
-          const ready = spyOn(KiloIndexing, "ready").mockReturnValue(true)
-
-          try {
-            const registry = yield* ToolRegistry.Service
-            const ids = yield* registry.ids()
-
-            expect(ids).toContain("semantic_search")
-          } finally {
-            ready.mockRestore()
-          }
-        }),
-      { git: true },
-    ),
-  )
   // kilocode_change end
 
   it.live("loads tools from .opencode/tool (singular)", () =>

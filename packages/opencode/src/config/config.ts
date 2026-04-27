@@ -44,16 +44,13 @@ import { ConfigVariable } from "./variable"
 import { Npm } from "@/npm"
 // kilocode_change start
 import { KilocodeConfig } from "../kilocode/config/config"
-import { createRequire } from "module" // kilocode_change
-import { ensureIndexingPlugin, resolveIndexingPlugin } from "@/kilocode/indexing-feature" // kilocode_change
+import { KilocodeDefaultPlugins } from "@/kilocode/config/default-plugins" // kilocode_change
 import { IndexingConfig as KiloIndexingConfig } from "@kilocode/kilo-indexing/config" // kilocode_change
 import { makeRuntime } from "@/effect/run-service"
 import { unique } from "remeda"
 // kilocode_change end
 
 const log = Log.create({ service: "config" })
-const req = createRequire(import.meta.url) // kilocode_change
-const indexing = resolveIndexingPlugin(req, log) // kilocode_change
 
 // Custom merge function that concatenates array fields instead of replacing them
 function mergeConfigConcatArrays(target: Info, source: Info): Info {
@@ -864,17 +861,8 @@ export const layer = Layer.effect(
         if (Flag.KILO_DISABLE_PRUNE) {
           result.compaction = { ...result.compaction, prune: false }
         }
-        // kilocode_change start — inject indexing plugin into both plugin list and origins
-        const before = result.plugin ?? []
-        const after = ensureIndexingPlugin(before, Flag.KILO_DISABLE_DEFAULT_PLUGINS ? undefined : indexing)
-        if (after.length > before.length) {
-          const added = after[after.length - 1]
-          result.plugin_origins = [
-            ...(result.plugin_origins ?? []),
-            { spec: added, source: "builtin", scope: "global" as ConfigPlugin.Scope },
-          ]
-        }
-        result.plugin = after
+        // kilocode_change start — inject Kilo default plugins into both plugin list and origins
+        KilocodeDefaultPlugins.apply(result, { disabled: Flag.KILO_DISABLE_DEFAULT_PLUGINS, log })
         // kilocode_change end
 
         return {

@@ -4,7 +4,8 @@ import { RecallTool } from "../../tool/recall"
 import * as Tool from "../../tool/tool"
 import { Flag } from "@/flag/flag"
 import { Effect } from "effect"
-import { SemanticSearchTool } from "@/tool/semantic_search"
+import { KiloIndexing } from "@/kilocode/indexing"
+import { SemanticSearchTool } from "@/kilocode/tool/semantic-search"
 
 export namespace KiloToolRegistry {
   /** Resolve Kilo-specific tool Infos outside any InstanceState, so their Truncate/Agent deps are
@@ -47,11 +48,11 @@ export namespace KiloToolRegistry {
   export function extra(
     tools: { codebase: Tool.Def; semantic: Tool.Def; recall: Tool.Def },
     cfg: { experimental?: { codebase_search?: boolean } },
-    indexing_enabled: boolean,
   ): Tool.Def[] {
+    const ready = KiloIndexing.ready()
     return [
       ...(cfg.experimental?.codebase_search === true ? [tools.codebase] : []),
-      ...(indexing_enabled ? [tools.semantic] : []),
+      ...(ready ? [tools.semantic] : []),
       tools.recall,
     ]
   }

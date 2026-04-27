@@ -13,7 +13,7 @@ import { PermissionKilocodeRoutes } from "../permission/routes"
 import { RemoteRoutes } from "../../server/routes/instance/remote"
 import { NetworkRoutes } from "../../server/routes/instance/network"
 import { SuggestionRoutes } from "../suggestion/routes"
-import { IndexingRoutes } from "../../server/routes/instance/indexing" // kilocode_change
+import { IndexingRoutes } from "./routes/indexing"
 import { createKiloRoutes } from "@kilocode/kilo-gateway"
 import { Auth } from "../../auth"
 import { errors } from "../../server/error"

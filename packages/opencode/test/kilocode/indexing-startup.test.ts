@@ -4,7 +4,7 @@ import { Hono } from "hono"
 import type { Config } from "../../src/config"
 import { KiloIndexing } from "../../src/kilocode/indexing"
 import { Instance } from "../../src/project/instance"
-import { IndexingRoutes } from "../../src/server/routes/instance/indexing"
+import { IndexingRoutes } from "../../src/kilocode/server/routes/indexing"
 import { Log } from "../../src/util"
 import { tmpdir } from "../fixture/fixture"
 

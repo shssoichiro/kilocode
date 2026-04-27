@@ -1,9 +1,8 @@
-// kilocode_change - new file
 import { describe, expect, test, spyOn } from "bun:test"
 import path from "path"
 import { Effect, Layer, ManagedRuntime } from "effect"
 import { Agent } from "../../src/agent/agent"
-import { SemanticSearchTool } from "../../src/tool/semantic_search"
+import { SemanticSearchTool } from "../../src/kilocode/tool/semantic-search"
 import { KiloIndexing } from "../../src/kilocode/indexing"
 import { Instance } from "../../src/project/instance"
 import { tmpdir } from "../fixture/fixture"
