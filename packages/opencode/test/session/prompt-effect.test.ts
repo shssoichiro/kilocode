@@ -1080,6 +1080,7 @@ unix("shell completes a fast command on the preferred shell", () =>
   ),
 )
 
+// kilocode_change start - port anomalyco/opencode#24215 cover shell cwd changes (agent "build" → "code" for our fork)
 unix("shell commands can change directory after startup", () =>
   provideTmpdirInstance(
     (dir) =>
@@ -1103,6 +1104,7 @@ unix("shell commands can change directory after startup", () =>
     { git: true, config: cfg },
   ),
 )
+// kilocode_change end
 
 unix("shell lists files from the project directory", () =>
   provideTmpdirInstance(

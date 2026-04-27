@@ -792,11 +792,12 @@ NOTE: At any point in time through this workflow you should feel free to ask the
       const shellName = (
         process.platform === "win32" ? path.win32.basename(sh, ".exe") : path.basename(sh)
       ).toLowerCase()
-      const cwd = ctx.directory
+      const cwd = ctx.directory // kilocode_change - moved up to use in invocations below
       const invocations: Record<string, { args: string[] }> = {
         nu: { args: ["-c", input.command] },
         fish: { args: ["-c", input.command] },
         zsh: {
+          // kilocode_change start - port anomalyco/opencode#24215: pass cwd as positional arg instead of $PWD (CI resets $PWD after startup files)
           args: [
             "-l",
             "-c",
@@ -809,8 +810,10 @@ NOTE: At any point in time through this workflow you should feel free to ask the
             "opencode",
             cwd,
           ],
+          // kilocode_change end
         },
         bash: {
+          // kilocode_change start - port anomalyco/opencode#24215: pass cwd as positional arg instead of $PWD (CI resets $PWD after startup files)
           args: [
             "-l",
             "-c",
@@ -823,6 +826,7 @@ NOTE: At any point in time through this workflow you should feel free to ask the
             "opencode",
             cwd,
           ],
+          // kilocode_change end
         },
         cmd: { args: ["/c", input.command] },
         powershell: { args: ["-NoProfile", "-Command", input.command] },
