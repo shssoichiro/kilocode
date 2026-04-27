@@ -41,6 +41,7 @@ const off: Partial<Config.Info> = {
   },
 }
 const configDir = process.env["KILO_CONFIG_DIR"]
+const error = new Error("test indexing initialization failed")
 
 afterEach(async () => {
   if (configDir === undefined) delete process.env["KILO_CONFIG_DIR"]
@@ -50,68 +51,85 @@ afterEach(async () => {
 
 describe("indexing startup degradation", () => {
   test("keeps server routes alive when indexing initialization fails", async () => {
+    const init = spyOn(CodeIndexManager.prototype, "initialize").mockRejectedValue(error)
+
     await using tmp = await tmpdir({ git: true, config: cfg })
     process.env["KILO_CONFIG_DIR"] = tmp.path
-    const app = Server.Default().app
 
-    const config = await app.request("/config", {
-      headers: {
-        "x-kilo-directory": tmp.path,
-      },
-    })
-    expect(config.status).toBe(200)
+    try {
+      const app = Server.Default().app
 
-    const status = await app.request("/indexing/status", {
-      headers: {
-        "x-kilo-directory": tmp.path,
-      },
-    })
-    expect(status.status).toBe(200)
+      const config = await app.request("/config", {
+        headers: {
+          "x-kilo-directory": tmp.path,
+        },
+      })
+      expect(config.status).toBe(200)
 
-    const body = await status.json()
-    expect(body).toMatchObject({
-      state: "Error",
-    })
-    expect(body.message).toContain("Failed to initialize:")
+      const status = await app.request("/indexing/status", {
+        headers: {
+          "x-kilo-directory": tmp.path,
+        },
+      })
+      expect(status.status).toBe(200)
+
+      const body = await status.json()
+      expect(body).toMatchObject({
+        state: "Error",
+      })
+      expect(body.message).toContain("Failed to initialize: test indexing initialization failed")
+    } finally {
+      init.mockRestore()
+    }
   })
 
   test("keeps degraded indexing queryable but unavailable", async () => {
+    const init = spyOn(CodeIndexManager.prototype, "initialize").mockRejectedValue(error)
+
     await using tmp = await tmpdir({ git: true, config: cfg })
     process.env["KILO_CONFIG_DIR"] = tmp.path
-
-    await Instance.provide({
-      directory: tmp.path,
-      init: () => AppRuntime.runPromise(InstanceBootstrap),
-      fn: async () => {
-        const status = await KiloIndexing.current()
-
-        expect(status.state).toBe("Error")
-        expect(status.message).toContain("Failed to initialize:")
-        expect(await KiloIndexing.available()).toBe(false)
-        expect(KiloIndexing.ready()).toBe(false)
-        expect(await KiloIndexing.search("boot failure")).toEqual([])
-      },
-    })
-  })
-
-  test("reports not ready while initialization is in flight", async () => {
-    await using tmp = await tmpdir({ git: true, config: cfg })
-    process.env["KILO_CONFIG_DIR"] = tmp.path
-    const init = spyOn(CodeIndexManager.prototype, "initialize").mockImplementation(() => new Promise(() => {}))
 
     try {
       await Instance.provide({
         directory: tmp.path,
         init: () => AppRuntime.runPromise(InstanceBootstrap),
         fn: async () => {
-          void KiloIndexing.init()
+          const status = await KiloIndexing.current()
+
+          expect(status.state).toBe("Error")
+          expect(status.message).toContain("Failed to initialize: test indexing initialization failed")
+          expect(await KiloIndexing.available()).toBe(false)
+          expect(KiloIndexing.ready()).toBe(false)
+          expect(await KiloIndexing.search("boot failure")).toEqual([])
+        },
+      })
+    } finally {
+      init.mockRestore()
+    }
+  })
+
+  test("reports not ready while initialization is in flight", async () => {
+    await using tmp = await tmpdir({ git: true, config: cfg })
+    process.env["KILO_CONFIG_DIR"] = tmp.path
+    const gate = Promise.withResolvers<{ requiresRestart: boolean }>()
+    const init = spyOn(CodeIndexManager.prototype, "initialize").mockImplementation(() => gate.promise)
+
+    try {
+      await Instance.provide({
+        directory: tmp.path,
+        init: () => AppRuntime.runPromise(InstanceBootstrap),
+        fn: async () => {
+          const boot = KiloIndexing.init()
           await new Promise((resolve) => setTimeout(resolve, 0))
 
           expect(init).toHaveBeenCalled()
           expect(KiloIndexing.ready()).toBe(false)
+          gate.resolve({ requiresRestart: false })
+          await boot
         },
       })
     } finally {
+      gate.resolve({ requiresRestart: false })
       init.mockRestore()
     }
   })
