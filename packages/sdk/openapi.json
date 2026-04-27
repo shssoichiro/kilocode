@@ -13625,6 +13625,10 @@
           },
           "overflow": {
             "type": "boolean"
+          },
+          "tail_start_id": {
+            "type": "string",
+            "pattern": "^msg.*"
           }
         },
         "required": ["id", "sessionID", "messageID", "type", "auto"]
@@ -14920,14 +14924,11 @@
       "PermissionConfig": {
         "anyOf": [
           {
+            "$ref": "#/components/schemas/PermissionActionConfig"
+          },
+          {
             "type": "object",
             "properties": {
-              "__originalKeys": {
-                "type": "array",
-                "items": {
-                  "type": "string"
-                }
-              },
               "read": {
                 "$ref": "#/components/schemas/PermissionRuleConfig"
               },
@@ -14980,9 +14981,6 @@
             "additionalProperties": {
               "$ref": "#/components/schemas/PermissionRuleConfig"
             }
-          },
-          {
-            "$ref": "#/components/schemas/PermissionActionConfig"
           }
         ]
       },
@@ -15882,6 +15880,18 @@
               "prune": {
                 "description": "Enable pruning of old tool outputs (default: true)",
                 "type": "boolean"
+              },
+              "tail_turns": {
+                "description": "Number of recent user turns, including their following assistant/tool responses, to keep verbatim during compaction (default: 2)",
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "preserve_recent_tokens": {
+                "description": "Maximum number of tokens from recent turns to preserve verbatim after compaction",
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
               },
               "reserved": {
                 "description": "Token buffer for compaction. Leaves enough window to avoid overflow during compaction.",
