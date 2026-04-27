@@ -117,10 +117,17 @@ describe("indexing startup degradation", () => {
     try {
       await Instance.provide({
         directory: tmp.path,
-        init: () => AppRuntime.runPromise(InstanceBootstrap),
         fn: async () => {
           const boot = KiloIndexing.init()
-          await new Promise((resolve) => setTimeout(resolve, 0))
+          await new Promise<void>((resolve, reject) => {
+            const start = performance.now()
+            const poll = () => {
+              if (init.mock.calls.length > 0) return resolve()
+              if (performance.now() - start > 5000) return reject(new Error("indexing initialization did not start"))
+              setTimeout(poll, 10)
+            }
+            poll()
+          })
 
           expect(init).toHaveBeenCalled()
           expect(KiloIndexing.ready()).toBe(false)
