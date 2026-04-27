@@ -1,5 +1,5 @@
 import { BedrockRuntimeClient, InvokeModelCommand, type InvokeModelCommandInput } from "@aws-sdk/client-bedrock-runtime"
-import { fromIni } from "@aws-sdk/credential-providers"
+import { fromIni } from "@aws-sdk/credential-provider-ini"
 import type { IEmbedder, EmbeddingResponse, EmbedderInfo } from "../interfaces"
 import {
   MAX_BATCH_TOKENS,

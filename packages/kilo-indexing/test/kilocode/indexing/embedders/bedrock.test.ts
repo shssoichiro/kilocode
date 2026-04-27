@@ -12,8 +12,7 @@ mock.module("@aws-sdk/client-bedrock-runtime", () => ({
 }))
 const mockFromEnv = mock(() => Promise.resolve({}))
 const mockFromIni = mock(() => Promise.resolve({}))
-mock.module("@aws-sdk/credential-providers", () => ({
-  fromEnv: mockFromEnv,
+mock.module("@aws-sdk/credential-provider-ini", () => ({
   fromIni: mockFromIni,
 }))
 
