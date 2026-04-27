@@ -720,6 +720,34 @@ export const dict = {
   "settings.general.sounds.errors.title": "Fehler",
   "settings.general.sounds.errors.description": "Ton abspielen, wenn ein Fehler auftritt",
 
+  "prompt.action.indexing": "Indizierungseinstellungen",
+  "settings.indexing.dimension.description":
+    "Leer lassen, um die Embedding-Dimension automatisch aus dem Modell zu erkennen.",
+  "settings.indexing.dimension.placeholder": "Auto",
+  "settings.indexing.dimension.title": "Vektordimension",
+  "settings.indexing.enable.description":
+    "Semantische Codebasis-Indizierung für diesen Arbeitsbereich ein- oder ausschalten.",
+  "settings.indexing.enable.title": "Indizierung aktivieren",
+  "settings.indexing.lancedbDirectory.description": "Optionaler Ordner für den lokalen LanceDB-Speicher.",
+  "settings.indexing.lancedbDirectory.placeholder": "Leer lassen für Standard",
+  "settings.indexing.lancedbDirectory.title": "LanceDB-Ordner",
+  "settings.indexing.model.description": "Das Standard-Embedding-Modell für den ausgewählten Anbieter überschreiben.",
+  "settings.indexing.model.title": "Embedding-Modell",
+  "settings.indexing.provider.description":
+    "Wählen Sie den Anbieter, der für die Generierung von Embeddings für die semantische Suche verwendet wird.",
+  "settings.indexing.provider.title": "Embedding-Anbieter",
+  "settings.indexing.providerField.description": "Anbieterspezifische Verbindungseinstellung.",
+  "settings.indexing.qdrantApiKey.description": "Optionaler API-Schlüssel für die Qdrant-Instanz.",
+  "settings.indexing.qdrantApiKey.placeholder": "Optionaler API-Schlüssel",
+  "settings.indexing.qdrantApiKey.title": "Qdrant API-Schlüssel",
+  "settings.indexing.qdrantUrl.description": "Server-URL für die Qdrant-Instanz.",
+  "settings.indexing.qdrantUrl.title": "Qdrant URL",
+  "settings.indexing.status.title": "Status",
+  "settings.indexing.title": "Indizierung",
+  "settings.indexing.tuning.description": "Erweiterter Such- und Batch-Parameter.",
+  "settings.indexing.vectorStore.description": "Wählen Sie, wo indizierte Embeddings gespeichert werden.",
+  "settings.indexing.vectorStore.title": "Vektorspeicher",
+
   "settings.shortcuts.title": "Tastenkombinationen",
   "settings.shortcuts.reset.button": "Auf Standard zurücksetzen",
   "settings.shortcuts.reset.toast.title": "Tastenkombinationen zurückgesetzt",
@@ -1154,6 +1182,9 @@ export const dict = {
   "settings.experimental.pasteSummary.description": "Große eingefügte Inhalte nicht zusammenfassen",
   "settings.experimental.batch.title": "Batch-Werkzeug",
   "settings.experimental.batch.description": "Bündelung mehrerer Werkzeugaufrufe aktivieren",
+  "settings.experimental.semanticIndexing.title": "Semantic Indexing",
+  "settings.experimental.semanticIndexing.description":
+    "Enable semantic codebase indexing and the semantic_search tool. Requires indexing configuration.",
   "settings.experimental.codebaseSearch.title": "Codebase-Suche",
   "settings.experimental.codebaseSearch.description":
     "KI-gestützte Suche in natürlicher Sprache über die gesamte Codebasis aktivieren",

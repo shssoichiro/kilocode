@@ -357,6 +357,15 @@ export interface RequestGlobalConfigMessage {
   type: "requestGlobalConfig"
 }
 
+export interface RequestIndexingStatusMessage {
+  type: "requestIndexingStatus"
+}
+
+export interface OpenSettingsTabRequest {
+  type: "openSettingsTab"
+  tab: string
+}
+
 export interface UpdateConfigMessage {
   type: "updateConfig"
   config: Partial<Config>
@@ -966,7 +975,9 @@ export type WebviewMessage =
   | RequestClaudeCompatSettingMessage
   | RequestConfigMessage
   | RequestGlobalConfigMessage
+  | RequestIndexingStatusMessage
   | UpdateConfigMessage
+  | OpenSettingsTabRequest
   | RequestNotificationSettingsMessage
   | ResetAllSettingsRequest
   | SettingsTabChangedMessage
