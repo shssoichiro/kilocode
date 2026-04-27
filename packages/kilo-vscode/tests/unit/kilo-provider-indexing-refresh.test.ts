@@ -131,6 +131,8 @@ describe("KiloProvider indexing refresh", () => {
 
       expect(calls.length).toBe(1)
       const headers = new Headers(calls[0]?.init?.headers)
+      const auth = Buffer.from("kilo:secret").toString("base64")
+      expect(headers.get("Authorization")).toBe(`Basic ${auth}`)
       expect(headers.get("x-kilo-directory")).toBe(worktree)
     } finally {
       globalThis.fetch = original

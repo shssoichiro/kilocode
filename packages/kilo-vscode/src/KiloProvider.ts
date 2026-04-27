@@ -2088,9 +2088,10 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
 
     try {
       const dir = this.getWorkspaceDirectory(this.currentSession?.id)
+      const auth = Buffer.from(`kilo:${config.password}`).toString("base64")
       const res = await fetch(`${config.baseUrl}/indexing/status`, {
         headers: {
-          Authorization: `Bearer ${config.password}`,
+          Authorization: `Basic ${auth}`,
           ...(dir ? { "x-kilo-directory": dir } : {}),
         },
       })
