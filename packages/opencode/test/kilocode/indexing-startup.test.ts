@@ -1,11 +1,10 @@
 import { afterEach, describe, expect, spyOn, test } from "bun:test"
 import { CodeIndexManager } from "@kilocode/kilo-indexing/engine"
+import { Hono } from "hono"
 import type { Config } from "../../src/config"
-import { AppRuntime } from "../../src/effect/app-runtime"
 import { KiloIndexing } from "../../src/kilocode/indexing"
-import { InstanceBootstrap } from "../../src/project/bootstrap"
 import { Instance } from "../../src/project/instance"
-import { Server } from "../../src/server/server"
+import { IndexingRoutes } from "../../src/server/routes/instance/indexing"
 import { Log } from "../../src/util"
 import { tmpdir } from "../fixture/fixture"
 
@@ -57,27 +56,21 @@ describe("indexing startup degradation", () => {
     process.env["KILO_CONFIG_DIR"] = tmp.path
 
     try {
-      const app = Server.Default().app
+      const app = new Hono().route("/indexing", IndexingRoutes())
 
-      const config = await app.request("/config", {
-        headers: {
-          "x-kilo-directory": tmp.path,
+      await Instance.provide({
+        directory: tmp.path,
+        fn: async () => {
+          const status = await app.request("/indexing/status")
+          expect(status.status).toBe(200)
+
+          const body = await status.json()
+          expect(body).toMatchObject({
+            state: "Error",
+          })
+          expect(body.message).toContain("Failed to initialize: test indexing initialization failed")
         },
       })
-      expect(config.status).toBe(200)
-
-      const status = await app.request("/indexing/status", {
-        headers: {
-          "x-kilo-directory": tmp.path,
-        },
-      })
-      expect(status.status).toBe(200)
-
-      const body = await status.json()
-      expect(body).toMatchObject({
-        state: "Error",
-      })
-      expect(body.message).toContain("Failed to initialize: test indexing initialization failed")
     } finally {
       init.mockRestore()
     }
@@ -92,7 +85,6 @@ describe("indexing startup degradation", () => {
     try {
       await Instance.provide({
         directory: tmp.path,
-        init: () => AppRuntime.runPromise(InstanceBootstrap),
         fn: async () => {
           const status = await KiloIndexing.current()
 
@@ -148,7 +140,6 @@ describe("indexing startup degradation", () => {
 
     await Instance.provide({
       directory: tmp.path,
-      init: () => AppRuntime.runPromise(InstanceBootstrap),
       fn: async () => {
         const status = await KiloIndexing.current()
 
