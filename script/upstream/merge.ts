@@ -82,32 +82,45 @@ function abortMissingMergiraf(): never {
  * Attempt syntax-aware resolution of conflicted files via mergiraf.
  * Re-materializes each file with diff3 markers first so mergiraf can
  * reconstruct the base revision (needed for its structural heuristics).
- * Returns the number of files fully resolved and staged. Any per-file
- * failure (missing base/theirs, mergiraf crash, stage failure) is logged
- * and skipped so the overall merge continues to the next transform pass.
+ * Only stages files mergiraf resolves completely (no conflict markers
+ * remain). Partial resolutions are left unstaged so the remaining markers
+ * show up for manual review — we never auto-commit a partially-resolved
+ * file. Per-file failures are logged at debug level and skipped so the
+ * overall merge continues to the next transform pass.
  */
-async function runMergiraf(files: string[]): Promise<number> {
+async function runMergiraf(files: string[]): Promise<{ solved: number; partial: number }> {
   let solved = 0
+  let partial = 0
   for (const file of files) {
     const co = await $`git checkout --conflict=diff3 -- ${file}`.quiet().nothrow()
-    if (co.exitCode !== 0) continue
-    const mg = await $`mergiraf solve ${file}`.quiet().nothrow()
-    if (mg.exitCode !== 0) {
-      logger.debug(`mergiraf failed on ${file} (exit ${mg.exitCode}) — leaving for next transform pass`)
+    if (co.exitCode !== 0) {
+      logger.debug(`skipping ${file}: checkout --conflict=diff3 failed (exit ${co.exitCode})`)
       continue
     }
+    const mg = await $`mergiraf solve ${file}`.quiet().nothrow()
     const content = await Bun.file(file)
       .text()
       .catch(() => "")
-    if (!content || content.includes("<<<<<<< ")) continue
+    if (!content) {
+      logger.debug(`skipping ${file}: empty after mergiraf (exit ${mg.exitCode})`)
+      continue
+    }
+    if (content.includes("<<<<<<< ")) {
+      // exit 2 = mergiraf reduced but didn't fully resolve; exit 1 = no change.
+      // Either way the working tree still has markers, so leave it unstaged
+      // for manual review rather than silently staging a half-resolved file.
+      logger.debug(`${file}: mergiraf left conflict markers (exit ${mg.exitCode}) — unstaged for manual review`)
+      if (mg.exitCode === 2) partial++
+      continue
+    }
     const add = await $`git add ${file}`.quiet().nothrow()
     if (add.exitCode !== 0) {
-      logger.debug(`git add failed on ${file} (exit ${add.exitCode}) — leaving for next transform pass`)
+      logger.debug(`${file}: git add failed (exit ${add.exitCode}) — leaving for next transform pass`)
       continue
     }
     solved++
   }
-  return solved
+  return { solved, partial }
 }
 
 function parseArgs(): MergeOptions {
@@ -510,12 +523,17 @@ async function main() {
       // kilocode_change markers, plus JSON/YAML/TOML key merges and other
       // structural conflicts. Presence is enforced at startup.
       logger.info("Running mergiraf on remaining conflicts...")
-      const solved = await runMergiraf(conflictedFiles)
-      if (solved > 0) {
-        logger.success(`mergiraf auto-resolved ${solved} conflict(s)`)
+      const mgResult = await runMergiraf(conflictedFiles)
+      if (mgResult.solved > 0) {
+        logger.success(`mergiraf auto-resolved ${mgResult.solved} conflict(s)`)
         conflictedFiles = await git.getConflictedFiles()
       } else {
-        logger.info("mergiraf did not resolve any conflicts")
+        logger.info("mergiraf did not fully resolve any conflicts")
+      }
+      if (mgResult.partial > 0) {
+        logger.info(
+          `mergiraf partially resolved ${mgResult.partial} file(s) — remaining markers left unstaged for manual review`,
+        )
       }
 
       // Transform i18n files
