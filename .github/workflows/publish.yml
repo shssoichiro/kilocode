@@ -26,7 +26,7 @@ on:
         description: "Publish as pre-release (VS Code marketplace + npm rc channel)"
         required: false
         type: boolean
-        default: false
+        default: true
 
 concurrency: ${{ github.workflow }}-${{ github.ref }}-${{ inputs.version || inputs.bump }}
 
