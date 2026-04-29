@@ -53,24 +53,30 @@ function uniquePaths(paths: Array<string | undefined>): string[] {
   return [...new Set(paths.filter((item): item is string => !!item))]
 }
 
-function wasmDirectories(sourceDirectory?: string): string[] {
+export function wasmDirectories(sourceDirectory?: string): string[] {
   const baseDir = sourceDirectory || __dirname
   const execDir = path.dirname(process.execPath)
   const envDir = process.env.KILO_TREE_SITTER_WASM_DIR
   const wasmPkg = resolveModulePath("tree-sitter-wasms/package.json")
   const wasmOutDir = wasmPkg ? path.join(path.dirname(wasmPkg), "out") : undefined
 
+  // RATIONALE: FHS-strict layout (e.g. /usr/bin/kilo + /usr/lib/kilo/tree-sitter/) is not used
+  // by current AUR/Homebrew packaging, but supporting it out-of-the-box future-proofs the
+  // resolver for downstream distro packagers who prefer /usr/lib/<pkg>/ over /usr/bin/<pkg>/.
+  const fhsWasmDir = path.join(execDir, "..", "lib", "kilo", "tree-sitter")
+
   return uniquePaths([
     baseDir,
     path.join(baseDir, "tree-sitter"),
     execDir,
     path.join(execDir, "tree-sitter"),
+    fhsWasmDir,
     envDir,
     wasmOutDir,
   ])
 }
 
-function resolveFromDirectories(file: string, dirs: string[]): string | undefined {
+export function resolveFromDirectories(file: string, dirs: string[]): string | undefined {
   for (const dir of dirs) {
     const candidate = path.join(dir, file)
     if (!existsSync(candidate)) {
@@ -80,13 +86,14 @@ function resolveFromDirectories(file: string, dirs: string[]): string | undefine
   }
 }
 
-function resolveCoreRuntimeWasmPath(sourceDirectory?: string): string | undefined {
+// RATIONALE: Previously fell back to `require.resolve("web-tree-sitter/tree-sitter.wasm")`,
+// but Bun's `--compile` statically bakes that path at build time — on CI the resolved path
+// was `/home/runner/_work/.../node_modules/...` which then crashed at runtime on user machines
+// (AUR `kilo-bin`, Homebrew) with a misleading ENOENT pointing at the CI runner. Returning
+// `undefined` here lets the caller produce a diagnostic that names the searched dirs.
+export function resolveCoreRuntimeWasmPath(sourceDirectory?: string): string | undefined {
   const dirs = wasmDirectories(sourceDirectory)
-  const localPath = resolveFromDirectories("tree-sitter.wasm", dirs)
-  if (localPath) {
-    return localPath
-  }
-  return resolveModulePath("web-tree-sitter/tree-sitter.wasm")
+  return resolveFromDirectories("tree-sitter.wasm", dirs)
 }
 
 function resolveLanguageWasmPath(langName: string, sourceDirectory?: string) {
@@ -138,19 +145,26 @@ export async function loadRequiredLanguageParsers(filesToParse: string[], source
   const { Parser, Query } = require("web-tree-sitter")
 
   if (!isParserInitialized) {
+    const runtimeWasmPath = resolveCoreRuntimeWasmPath(sourceDirectory)
+    if (!runtimeWasmPath) {
+      const searchedDirs = wasmDirectories(sourceDirectory)
+      log.error("tree-sitter.wasm not found in any known location", { searchedDirs })
+      throw new Error(
+        `tree-sitter.wasm missing from Kilo CLI install; searched: ${searchedDirs.join(", ")}. ` +
+          `Reinstall or set KILO_TREE_SITTER_WASM_DIR to the directory containing tree-sitter.wasm.`,
+      )
+    }
     try {
-      const runtimeWasmPath = resolveCoreRuntimeWasmPath(sourceDirectory)
-      await (runtimeWasmPath
-        ? Parser.init({
-            locateFile() {
-              return runtimeWasmPath
-            },
-          })
-        : Parser.init())
+      await Parser.init({
+        locateFile() {
+          return runtimeWasmPath
+        },
+      })
       isParserInitialized = true
     } catch (error) {
       log.error("Failed to initialize tree-sitter parser", {
         err: error instanceof Error ? error.message : String(error),
+        runtimeWasmPath,
       })
       throw error
     }
