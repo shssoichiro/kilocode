@@ -522,6 +522,7 @@ export const dict = {
   "ui.permission.toolLabel.todoRead": "Lire Todo",
   "ui.permission.toolLabel.todoWrite": "Écrire Todo",
   "ui.permission.toolLabel.codeSearch": "Recherche de code",
+  "ui.permission.parameters": "Parameters",
   "ui.permission.toggleWrap": "Basculer le retour à la ligne",
   "ui.permission.copyCommand": "Copier",
   "notification.question.title": "Question",

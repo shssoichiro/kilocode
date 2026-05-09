@@ -1,6 +1,49 @@
-import type { PermissionRule } from "../../types/messages"
+import type { Part, ToolPart } from "@kilocode/sdk/v2"
+import type { PermissionRequest, PermissionRule } from "../../types/messages"
+
+const SKIP_PARAMS = new Set(["rules", "diff", "filediff", "files"])
+
+type Parts = Record<string, Part[] | undefined>
 
 export type RuleDecision = "approved" | "denied" | "pending"
+
+function stringify(value: unknown): string | undefined {
+  const text = JSON.stringify(value, null, 2)
+  if (text === undefined) return
+  return text
+}
+
+function empty(value: unknown): boolean {
+  if (Array.isArray(value)) return value.length === 0
+  if (typeof value !== "object" || value === null) return false
+  return Object.keys(value).length === 0
+}
+
+function input(request: PermissionRequest, parts: Parts): unknown {
+  const ref = request.tool
+  if (!ref) return
+
+  const part = parts[ref.messageID]?.find((item) => item.type === "tool" && (item as ToolPart).callID === ref.callID)
+  if (!part) return
+
+  return (part as ToolPart).state.input
+}
+
+function metadata(args: PermissionRequest["args"]): Record<string, unknown> {
+  return Object.fromEntries(Object.entries(args).filter(([key, value]) => !SKIP_PARAMS.has(key) && value !== undefined))
+}
+
+export function permissionParameters(request: PermissionRequest, parts: Parts = {}): string | undefined {
+  const params = input(request, parts)
+  if (params !== undefined && !empty(params)) return stringify(params)
+
+  const meta = metadata(request.args)
+  const keys = Object.keys(meta)
+  if (keys.length === 0) return
+  if (keys.length === 1 && keys[0] === "command") return
+
+  return stringify(meta)
+}
 
 /**
  * Check which rules are already saved in the user's config and return

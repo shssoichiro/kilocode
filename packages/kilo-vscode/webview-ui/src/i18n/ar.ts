@@ -508,6 +508,7 @@ export const dict = {
   "ui.permission.toolLabel.todoRead": "قراءة المهام",
   "ui.permission.toolLabel.todoWrite": "كتابة المهام",
   "ui.permission.toolLabel.codeSearch": "بحث الكود",
+  "ui.permission.parameters": "Parameters",
   "ui.permission.toggleWrap": "تبديل التفاف الكلمات",
   "ui.permission.copyCommand": "نسخ",
   "notification.question.title": "سؤال",

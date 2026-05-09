@@ -515,6 +515,7 @@ export const dict = {
   "ui.permission.toolLabel.todoRead": "Чтение списка задач",
   "ui.permission.toolLabel.todoWrite": "Запись списка задач",
   "ui.permission.toolLabel.codeSearch": "Поиск кода",
+  "ui.permission.parameters": "Parameters",
   "ui.permission.toggleWrap": "Переключить перенос строк",
   "ui.permission.copyCommand": "Копировать",
   "notification.question.title": "Вопрос",

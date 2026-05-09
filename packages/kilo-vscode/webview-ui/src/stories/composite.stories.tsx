@@ -488,14 +488,15 @@ export const PermissionDockTodo: Story = {
   name: "Permission Dock — todowrite above chatbox",
   render: () => {
     const perms = [todoWritePermission]
+    const data = dataWith([todoWritePending], perms)
     const session = {
       ...mockSessionValue({ id: SESSION_ID, status: "busy", permissions: perms }),
-      messages: () => [{ id: "msg-001" }] as any[],
+      messages: () => [{ id: ASST_MSG_ID }] as any[],
     }
     return (
-      <StoryProviders permissions={perms} sessionID={SESSION_ID} status="busy" noPadding>
+      <StoryProviders data={data} permissions={perms} sessionID={SESSION_ID} status="busy" noPadding>
         <SessionContext.Provider value={session as any}>
-          <div style={{ width: "100%", height: "300px", display: "flex", "flex-direction": "column" }}>
+          <div style={{ width: "100%", height: "360px", display: "flex", "flex-direction": "column" }}>
             <ChatView />
           </div>
         </SessionContext.Provider>

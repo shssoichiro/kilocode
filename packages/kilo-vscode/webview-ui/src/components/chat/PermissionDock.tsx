@@ -11,15 +11,23 @@
 
 import { Component, For, Show, createEffect, createMemo, createSignal, onCleanup } from "solid-js"
 import { Button } from "@kilocode/kilo-ui/button"
+import { useData } from "@kilocode/kilo-ui/context/data"
 import { DockPrompt } from "@kilocode/kilo-ui/dock-prompt"
 import { Icon } from "@kilocode/kilo-ui/icon"
 import { Tooltip } from "@kilocode/kilo-ui/tooltip"
 import { useSession } from "../../context/session"
 import { useLanguage } from "../../context/language"
 import { useConfig } from "../../context/config"
-import { describePatterns, resolveLabel, savedRuleStates, type RuleDecision } from "./permission-dock-utils"
+import {
+  describePatterns,
+  permissionParameters,
+  resolveLabel,
+  savedRuleStates,
+  type RuleDecision,
+} from "./permission-dock-utils"
 import { PermissionCommand } from "./PermissionCommand"
 import { PermissionDiff } from "./PermissionDiff"
+import { PermissionParameters } from "./PermissionParameters"
 import { permissionDiffs } from "./permission-diff-utils"
 import type { PermissionRequest } from "../../types/messages"
 
@@ -30,6 +38,7 @@ export const PermissionDock: Component<{
   responding: boolean
   onDecide: (response: "once" | "reject", approvedAlways: string[], deniedAlways: string[]) => void
 }> = (props) => {
+  const data = useData()
   const session = useSession()
   const language = useLanguage()
   const { config } = useConfig()
@@ -49,6 +58,7 @@ export const PermissionDock: Component<{
   )
 
   const diffs = createMemo(() => permissionDiffs(props.request))
+  const params = createMemo(() => permissionParameters(props.request, data.store.part))
 
   // Pre-populate toggle states from existing config rules so previously
   // approved/denied patterns show their saved state immediately.
@@ -272,6 +282,8 @@ export const PermissionDock: Component<{
             </div>
           )
         })()}
+
+        <Show when={params()}>{(value) => <PermissionParameters value={value()} />}</Show>
 
         <Show when={diffs().length > 0}>
           <div data-slot="permission-diffs" data-count={diffs().length}>

@@ -510,6 +510,7 @@ export const dict = {
   "ui.permission.toolLabel.todoRead": "Todo読み込み",
   "ui.permission.toolLabel.todoWrite": "Todo書き込み",
   "ui.permission.toolLabel.codeSearch": "コード検索",
+  "ui.permission.parameters": "Parameters",
   "ui.permission.toggleWrap": "折り返しを切り替え",
   "ui.permission.copyCommand": "コピー",
   "notification.question.title": "質問",

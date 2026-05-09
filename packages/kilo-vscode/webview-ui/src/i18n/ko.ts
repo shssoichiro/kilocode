@@ -511,6 +511,7 @@ export const dict = {
   "ui.permission.toolLabel.todoRead": "할 일 읽기",
   "ui.permission.toolLabel.todoWrite": "할 일 쓰기",
   "ui.permission.toolLabel.codeSearch": "코드 검색",
+  "ui.permission.parameters": "Parameters",
   "ui.permission.toggleWrap": "줄 바꿈 전환",
   "ui.permission.copyCommand": "복사",
   "notification.question.title": "질문",

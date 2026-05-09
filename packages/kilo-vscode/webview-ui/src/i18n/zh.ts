@@ -505,6 +505,7 @@ export const dict = {
   "ui.permission.toolLabel.todoRead": "读取待办",
   "ui.permission.toolLabel.todoWrite": "更新待办",
   "ui.permission.toolLabel.codeSearch": "代码搜索",
+  "ui.permission.parameters": "Parameters",
   "ui.permission.toggleWrap": "切换自动换行",
   "ui.permission.copyCommand": "复制",
   "notification.question.title": "问题",

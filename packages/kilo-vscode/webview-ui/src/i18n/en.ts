@@ -514,6 +514,7 @@ export const dict = {
   "ui.permission.toolLabel.todoRead": "Todo Read",
   "ui.permission.toolLabel.todoWrite": "Todo Write",
   "ui.permission.toolLabel.codeSearch": "Code Search",
+  "ui.permission.parameters": "Parameters",
   "ui.permission.toggleWrap": "Toggle word wrap",
   "ui.permission.copyCommand": "Copy",
   "notification.question.title": "Question",

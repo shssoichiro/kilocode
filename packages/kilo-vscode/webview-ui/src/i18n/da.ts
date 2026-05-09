@@ -513,6 +513,7 @@ export const dict = {
   "ui.permission.toolLabel.todoRead": "Læs To-do",
   "ui.permission.toolLabel.todoWrite": "Skriv To-do",
   "ui.permission.toolLabel.codeSearch": "Kodesøgning",
+  "ui.permission.parameters": "Parameters",
   "ui.permission.toggleWrap": "Skift tekstombrydning",
   "ui.permission.copyCommand": "Kopiér",
   "notification.question.title": "Spørgsmål",

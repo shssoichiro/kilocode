@@ -520,6 +520,7 @@ export const dict = {
   "ui.permission.toolLabel.todoRead": "Todo lesen",
   "ui.permission.toolLabel.todoWrite": "Todo schreiben",
   "ui.permission.toolLabel.codeSearch": "Code-Suche",
+  "ui.permission.parameters": "Parameters",
   "ui.permission.toggleWrap": "Zeilenumbruch umschalten",
   "ui.permission.copyCommand": "Kopieren",
   "notification.question.title": "Frage",

@@ -515,6 +515,7 @@ export const dict = {
   "ui.permission.toolLabel.todoRead": "Görev Oku",
   "ui.permission.toolLabel.todoWrite": "Görev Yaz",
   "ui.permission.toolLabel.codeSearch": "Kod Araması",
+  "ui.permission.parameters": "Parameters",
   "ui.permission.toggleWrap": "Sözcük kaydırmayı aç/kapat",
   "ui.permission.copyCommand": "Kopyala",
   "notification.question.title": "Soru",
