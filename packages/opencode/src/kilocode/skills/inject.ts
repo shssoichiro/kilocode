@@ -7,10 +7,9 @@ import type * as Tool from "@/tool/tool"
 // A `!`cmd`` placeholder in SKILL.md is replaced by the command's stdout before the
 // content reaches the model. Runs only for model-initiated skill loads (not the
 // user-initiated `/skill` path), gated by trust (only global/builtin skills), a
-// kill-switch (KILO_DISABLE_SKILL_SHELL), and one batch bash ask naming every command
-// up front (`skillShell` forces the ask past allow/auto-approve rules; a preceding
-// external_directory ask covers out-of-project paths). Substitution runs once; output
-// is never re-scanned, so a command can't emit a placeholder a later pass would run.
+// kill-switch (KILO_DISABLE_SKILL_SHELL), and ordinary bash/external_directory
+// authorization. Substitution runs once; output is never re-scanned, so a command
+// can't emit a placeholder a later pass would run.
 
 // Execution bounds: model-initiated commands must not hang the load, blow up
 // context, or overrun the batch.
@@ -70,22 +69,22 @@ export namespace SkillInject {
     // each command adds its own string above, but abort rather than risk silent execution.
     if (patterns.size === 0) return yield* Effect.die(new Error("skill shell produced no authorizable commands"))
 
-    // One up-front bash ask naming every command (metadata.commands is the verbatim list
-    // shown, since decomposition can drop/split segments); external_directory asks first if
-    // any command leaves the project. `skillShell` forces both asks past allow/YOLO rules.
-    const metadata = { skillShell: true, skill: opts.skill, commands }
+    // Use ordinary permission handling so configured allow/ask/deny rules apply without
+    // a separate skill-specific approval gate. Keep verbatim commands in metadata because
+    // decomposition can drop or split segments; external_directory authorization runs first.
+    const metadata = { skill: opts.skill, commands }
     if (dirs.size > 0) {
       yield* opts.ctx.ask({
         permission: "external_directory",
         patterns: Array.from(dirs),
-        always: [],
+        always: Array.from(dirs),
         metadata,
       })
     }
     yield* opts.ctx.ask({
       permission: "bash",
       patterns: Array.from(patterns),
-      always: [],
+      always: Array.from(patterns),
       metadata,
     })
 

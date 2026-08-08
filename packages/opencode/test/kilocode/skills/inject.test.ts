@@ -82,7 +82,7 @@ function loadSkill(name: string, ask: Tool.Context["ask"]) {
 }
 
 describe("skill shell injection", () => {
-  unix("runs the batch after a single forced approval listing every command", () =>
+  unix("runs the batch through ordinary permission handling", () =>
     Effect.gen(function* () {
       yield* writeGlobalSkill("trusted-shell", "A: !`printf one` B: !`printf two`")
 
@@ -94,12 +94,14 @@ describe("skill shell injection", () => {
       )
 
       expect(result.output).toContain("A: one B: two")
-      // one skill-load ask plus exactly one batch bash ask carrying all commands
+      // One skill-load ask plus one bash authorization carrying every command.
       const bash = requests.filter((r) => r.permission === "bash")
       expect(bash.length).toBe(1)
-      expect(bash[0].metadata?.["skillShell"]).toBe(true)
-      // patterns drive rule matching; metadata.commands is the verbatim list the prompt renders
+      expect(bash[0].metadata?.["skillShell"]).toBeUndefined()
+      // Patterns drive rule matching; metadata.commands retains the verbatim list for clients.
       expect(bash[0].patterns).toEqual(["printf one", "printf two"])
+      expect(bash[0].always).toEqual(["printf one", "printf two"])
+      expect(bash[0].metadata?.["skill"]).toBe("trusted-shell")
       expect(bash[0].metadata?.["commands"]).toEqual(["printf one", "printf two"])
     }),
   )
@@ -141,12 +143,11 @@ describe("skill shell injection", () => {
     }),
   )
 
-  unix("still prompts for a cd-only command (no empty-pattern auto-approve)", () =>
+  unix("authorizes a cd-only command with a non-empty pattern", () =>
     Effect.gen(function* () {
       // `cd` decomposes to no sub-command patterns; without the verbatim command the
-      // bash ask would carry an empty pattern list and Permission.ask would silently
-      // auto-approve (forceAsk never runs on an empty list). The raw command keeps
-      // the prompt firing.
+      // bash authorization would carry an empty pattern list and silently auto-approve.
+      // The raw command keeps ordinary permission rules in control.
       yield* writeGlobalSkill("cd-only", "Out: !`cd sub`")
 
       const requests: Array<Omit<PermissionV1.Request, "id" | "sessionID" | "tool">> = []
@@ -162,12 +163,12 @@ describe("skill shell injection", () => {
     }),
   )
 
-  unix("asks external_directory (same metadata) before bash when a command leaves the project", () =>
+  unix("authorizes external_directory before bash when a command leaves the project", () =>
     Effect.gen(function* () {
       // `cd` is a path-taking command for decomposition purposes, so a target outside the
       // project (here /tmp, never inside the test instance's tmpdir) populates the decomposed
-      // dirs set and must raise a second, up-front external_directory ask before the bash ask —
-      // both carrying the same skillShell/skill/commands metadata as the batch they gate.
+      // dirs set and must raise a second, up-front external_directory authorization before
+      // bash, with both requests carrying the same skill and command metadata.
       yield* writeGlobalSkill("outside-shell", "Out: !`cd /tmp && pwd`")
 
       const requests: Array<Omit<PermissionV1.Request, "id" | "sessionID" | "tool">> = []
@@ -177,12 +178,15 @@ describe("skill shell injection", () => {
         }),
       )
 
-      const skillRequests = requests.filter((r) => r.metadata?.["skillShell"] === true)
-      expect(skillRequests.map((r) => r.permission)).toEqual(["external_directory", "bash"])
+      const shell = requests.filter((r) => r.permission === "external_directory" || r.permission === "bash")
+      expect(shell.map((r) => r.permission)).toEqual(["external_directory", "bash"])
 
-      const [dirAsk, bashAsk] = skillRequests
+      const [dirAsk, bashAsk] = shell
       expect(dirAsk.patterns).toEqual(["/tmp/*"])
+      expect(dirAsk.always).toEqual(["/tmp/*"])
+      expect(bashAsk.always).toEqual(["cd /tmp && pwd", "pwd"])
       expect(dirAsk.metadata).toEqual(bashAsk.metadata)
+      expect(dirAsk.metadata?.["skillShell"]).toBeUndefined()
       expect(dirAsk.metadata?.["skill"]).toBe("outside-shell")
       expect(dirAsk.metadata?.["commands"]).toEqual(["cd /tmp && pwd"])
     }),
