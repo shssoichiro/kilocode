@@ -12,18 +12,3 @@ export function formatIndexingLabel(status: IndexingStatus): string {
 
   return status.state
 }
-
-export function formatIndexingMessage(status: IndexingStatus): string | undefined {
-  const label = formatIndexingLabel(status)
-  const msg = status.message.trim()
-  if (!msg || msg === label) return undefined
-
-  const plain = msg
-    .replace(/^codebase indexing (is )?/i, "")
-    .replace(/^indexing (is )?/i, "")
-    .replace(/[.!]+$/, "")
-    .toLowerCase()
-
-  if (plain === label.toLowerCase()) return undefined
-  return msg
-}

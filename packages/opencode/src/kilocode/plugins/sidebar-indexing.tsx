@@ -1,9 +1,9 @@
 import type { TuiPlugin, TuiPluginApi, TuiPluginModule } from "@kilocode/plugin/tui"
-import { createEffect, createMemo, createSignal, onCleanup, Show } from "solid-js"
-import type { IndexingStatusState } from "@kilocode/kilo-indexing/status"
+import { createEffect, createMemo, createSignal, onCleanup, onMount, Show } from "solid-js"
+import type { IndexingStatus, IndexingStatusState } from "@kilocode/kilo-indexing/status"
 import * as Log from "@opencode-ai/core/util/log"
 import { useSync } from "@tui/context/sync"
-import { formatIndexingLabel, formatIndexingMessage } from "../indexing-label"
+import { formatIndexingLabel } from "../indexing-label"
 import { indexingEnabled } from "../indexing-feature"
 
 const id = "internal:kilo-sidebar-indexing"
@@ -17,6 +17,19 @@ function tone(state: IndexingStatusState, api: TuiPluginApi) {
   return theme.textMuted
 }
 
+function message(status: IndexingStatus) {
+  const label = formatIndexingLabel(status)
+  const msg = status.message.trim()
+  if (!msg || msg === label) return undefined
+  const plain = msg
+    .replace(/^codebase indexing (is )?/i, "")
+    .replace(/^indexing (is )?/i, "")
+    .replace(/[.!]+$/, "")
+    .toLowerCase()
+  if (plain === label.toLowerCase()) return undefined
+  return msg
+}
+
 function View(props: { api: TuiPluginApi }) {
   const theme = () => props.api.theme.current
   const sync = useSync()
@@ -26,8 +39,7 @@ function View(props: { api: TuiPluginApi }) {
   )
   const [status, setStatus] = createSignal(sync.data.indexing)
   const label = createMemo(() => formatIndexingLabel(status()))
-  const msg = createMemo(() => formatIndexingMessage(status()))
-  const terminal = createMemo(() => status().state === "Complete" || status().state === "Error")
+  const msg = createMemo(() => message(status()))
   const refresh = () => {
     if (!enabled() || !configured()) return
     const params = props.api.state.path.directory ? { directory: props.api.state.path.directory } : undefined
@@ -43,12 +55,10 @@ function View(props: { api: TuiPluginApi }) {
     setStatus(sync.data.indexing)
   })
 
-  createEffect(() => {
-    if (!enabled() || !configured()) return
+  onMount(() => {
     refresh()
-    if (terminal()) return
     const timer = setInterval(() => {
-      if (terminal()) return
+      if (status().state === "Complete" || status().state === "Error") return
       refresh()
     }, 1000)
     onCleanup(() => clearInterval(timer))

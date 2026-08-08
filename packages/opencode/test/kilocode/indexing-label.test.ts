@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test"
-import { formatIndexingLabel, formatIndexingMessage } from "../../src/kilocode/indexing-label"
+import { formatIndexingLabel } from "../../src/kilocode/indexing-label"
 
 describe("indexing label", () => {
   test("formats in-progress status with counts", () => {
@@ -78,49 +78,5 @@ describe("indexing label", () => {
         percent: 0,
       }),
     ).toBe("Standby")
-  })
-
-  test("hides empty and redundant indexing messages", () => {
-    expect(
-      formatIndexingMessage({
-        state: "In Progress",
-        message: "",
-        processedFiles: 0,
-        totalFiles: 0,
-        percent: 0,
-      }),
-    ).toBeUndefined()
-
-    expect(
-      formatIndexingMessage({
-        state: "In Progress",
-        message: "Indexing is in progress.",
-        processedFiles: 0,
-        totalFiles: 0,
-        percent: 0,
-      }),
-    ).toBeUndefined()
-
-    expect(
-      formatIndexingMessage({
-        state: "In Progress",
-        message: "42% (21/50 files)",
-        processedFiles: 21,
-        totalFiles: 50,
-        percent: 42,
-      }),
-    ).toBeUndefined()
-  })
-
-  test("keeps useful indexing messages", () => {
-    expect(
-      formatIndexingMessage({
-        state: "In Progress",
-        message: "Scanning changed files.",
-        processedFiles: 1,
-        totalFiles: 10,
-        percent: 10,
-      }),
-    ).toBe("Scanning changed files.")
   })
 })
